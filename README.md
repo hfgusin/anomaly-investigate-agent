@@ -1,4 +1,4 @@
-# auto-troubleshoot-agent
+# anomaly-investigate-agent
 
 # OpenClaw Mirror
 
