@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenClaw Mirror</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-icon">M</span><div><strong>OpenClaw Mirror</strong><small>本地 Agent 工作台</small></div></div>
+    <button id="new-session" class="primary">＋ 新建会话</button>
+    <button id="automation-toggle">自动化看板</button>
+    <button id="growth-start">商品成长分析</button>
+    <div class="section-label"><span>会话</span><label><input id="show-archived" type="checkbox" /> 含归档</label></div>
+    <nav id="sessions" aria-label="会话列表"></nav>
+    <div class="sidebar-footer"><span class="dot"></span>数据保存在本机<button id="skills-help">Skills</button><button id="agents-help">Agent 配置</button><button id="config-help">模型配置</button></div>
+  </aside>
+  <main>
+    <header><div><p class="eyebrow" id="page-path">工作区 / 会话</p><h1 id="title">正在连接</h1></div><div class="header-actions"><span id="connection">连接中</span><button id="verification-toggle">验收报告</button><button id="evaluation-toggle">评测</button><button id="reset-session" disabled>重置上下文</button></div></header>
+    <div id="mode-banner" class="mode-banner">正在读取运行模式…</div>
+    <div id="notice" role="alert" hidden></div>
+    <section id="growth-topic" class="growth-topic" aria-label="商品成长数据主题" hidden></section>
+    <aside id="task-panel" class="task-panel" aria-label="任务详情" hidden>
+      <div class="task-panel-head"><div><p class="eyebrow">运行 / 证据</p><h2>任务详情</h2></div><button id="close-task" aria-label="关闭任务详情">×</button></div>
+      <div id="task-content"></div>
+    </aside>
+    <section id="verification-view" class="evaluation-view" aria-label="工程验收报告" hidden><div id="verification-content"></div><div id="verification-detail"></div></section>
+    <section id="evaluation-view" class="evaluation-view" aria-label="HotpotQA 评测" hidden>
+      <div id="evaluation-content"></div>
+      <div id="evaluation-detail"></div>
+    </section>
+    <section id="automation-view" class="evaluation-view" aria-label="广告自动化看板" hidden>
+      <div id="daily-scan"></div>
+      <div class="auto-filters"><label>业务日期 <input id="automation-date" type="date" /></label><label>站点 <select id="automation-region"><option value="">全部站点</option></select></label><button id="automation-load">读取结果</button><button id="automation-refresh" class="primary">刷新数据</button><label><input id="automation-poll" type="checkbox" /> 每 60 秒读取缓存</label></div>
+      <p id="automation-progress" role="status"></p><div id="automation-content"></div>
+    </section>
+    <section id="messages" aria-label="对话记录">
+      <div class="welcome"><span class="welcome-icon">M</span><h2>从一条消息开始</h2><p>会话、运行状态与输出会保存在本机。<br />你可以连续发送消息，它们会在当前会话中依次执行。</p></div>
+    </section>
+    <div class="composer-wrap" id="composer-wrap"><form id="composer">
+      <label class="sr-only" for="input">输入消息</label>
+      <textarea id="input" rows="2" maxlength="32000" placeholder="输入消息，Enter 发送，Shift + Enter 换行" disabled></textarea>
+      <div class="composer-footer"><span id="composer-hint">正在连接 Gateway</span><button id="send" class="primary" disabled>发送 ↑</button></div>
+    </form><p class="footnote">OpenClaw 复刻进行中 · 点击任务卡片的「任务详情」查看步骤与出处</p></div>
+  </main>
+  <dialog id="skills-dialog"><form method="dialog"><button class="dialog-close" aria-label="关闭 Skills">×</button></form><h2>Skills</h2><p>目录优先级：.data/skills 高于 skills。同名覆盖；新任务执行时刷新，已开始任务保留快照。</p><button id="skills-refresh">刷新目录</button><div id="skills-content"></div></dialog>
+  <dialog id="agents-dialog"><form method="dialog"><button class="dialog-close" aria-label="关闭 Agent 配置">×</button></form><h2>Agent 配置</h2><div id="agents-content"></div></dialog>
+  <dialog id="config-dialog"><form method="dialog"><button class="dialog-close" aria-label="关闭">×</button></form><h2>连接你的模型</h2><p>在项目目录复制 <code>.env.example</code> 为 <code>.env</code>，填写已有接口的信息，然后重启服务。方舟内置联网选择 responses；普通兼容接口选择 chat-completions。</p><pre>MIRROR_RUNTIME=responses
+MODEL_BASE_URL=你的 API 根地址
+MODEL_NAME=你的模型 ID
+MODEL_API_KEY=你的密钥</pre><p>Base URL 应包含服务商要求的版本路径，程序会追加 <code>/chat/completions</code>。密钥仅由本机后端读取。</p><p>保持 <code>MIRROR_RUNTIME=demo</code> 可以体验会话流程，演示模式不会调用模型。</p></dialog>
+</body>
+</html>

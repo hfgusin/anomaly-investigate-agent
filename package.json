@@ -1,0 +1,33 @@
+{
+  "name": "openclaw-mirror",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "pnpm build && node dist/server.js",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "debug": "npm run build && node scripts/debug-server.mjs",
+    "mirror": "node scripts/mirror-cli.mjs",
+    "airflow:check": "cd python && ../.venv-di/bin/python -m agent_backend.airflow_cli airflow_list_dags '{\"limit\": 10}'",
+    "rag:prepare": "pnpm build && node dist/ads-rag/prepare.js",
+    "rag:setup": "pnpm build && node dist/ads-rag/cli.js setup",
+    "rag:index": "pnpm build && node dist/ads-rag/cli.js index",
+    "rag:search": "pnpm build && node dist/ads-rag/cli.js search",
+    "test": "pnpm build && node --test tests/*.test.mjs",
+    "verify": "pnpm build && node dist/verification-runner.js"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "3.8.1",
+    "linkedom": "^0.18.13",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,15 @@
+node_modules/
+.venv-rag/
+.venv-di/
+__pycache__/
+dist/
+.data/
+.env
+.env.*
+!.env.example
+/workspace/*
+!/workspace/.gitkeep
+*.log
+.DS_Store
+# 本地服务账号私钥，不进入版本控制。
+/gsheet_email.json

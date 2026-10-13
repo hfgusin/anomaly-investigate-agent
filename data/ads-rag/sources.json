@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "repositories": [
+    {
+      "id": "corey",
+      "repository": "https://github.com/coreyhaines31/marketingskills.git",
+      "commit": "dda3841f0b294e01e93b1541486beefbfab0915e",
+      "license": "MIT",
+      "include": ["skills/ads/", "skills/ad-creative/", "skills/analytics/", "skills/attribution/", "skills/ab-testing/"],
+      "exclude": ["/evals/", "/assets/"],
+      "kind": "community_methodology"
+    },
+    {
+      "id": "mbfinotti",
+      "repository": "https://github.com/mbfinotti/advertising-skills.git",
+      "commit": "7ede9c641c67d03fed5df54613f14e3d999a8716",
+      "license": "MIT",
+      "include": ["skills/ad-account-diagnostic/", "skills/ad-attribution-gap/", "skills/ad-bidding-strategy/", "skills/ad-budget-pacing/", "skills/ad-campaign-consolidation/", "skills/ad-conversion-tracking/", "skills/ad-creative-fatigue/", "skills/ad-creative-test-plan/", "skills/ad-platform-selection/", "skills/ad-spend-allocation/", "skills/ad-spend-guardrails/", "skills/paid-media-scaling/"],
+      "exclude": ["/evals/", "/assets/"],
+      "kind": "community_methodology"
+    },
+    {
+      "id": "diagnosis",
+      "repository": "https://github.com/zxxxly8/ad-delivery-diagnosis-skill.git",
+      "commit": "3730a24d4f90acdc810884c05042944735ed4e10",
+      "license": "MIT",
+      "include": ["SKILL.md", "examples/"],
+      "exclude": [],
+      "kind": "community_methodology"
+    }
+  ],
+  "pages": [
+    { "id": "google-bidding-overview", "url": "https://developers.google.com/google-ads/api/docs/campaigns/bidding/overview?hl=zh-cn", "topics": ["bidding"] },
+    { "id": "google-bidding-types", "url": "https://developers.google.com/google-ads/api/docs/campaigns/bidding/strategy-types?hl=zh-cn", "topics": ["bidding"] },
+    { "id": "google-budget-overview", "url": "https://developers.google.com/google-ads/api/docs/campaigns/budgets/overview?hl=zh-cn", "topics": ["budget"] },
+    { "id": "google-budget-create", "url": "https://developers.google.com/google-ads/api/docs/campaigns/budgets/create-budgets?hl=zh-cn", "topics": ["budget"] },
+    { "id": "google-conversions-overview", "url": "https://developers.google.com/google-ads/api/docs/conversions/overview?hl=zh-cn", "topics": ["conversion_tracking"] }
+  ]
+}

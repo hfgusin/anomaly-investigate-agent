@@ -1,0 +1,10 @@
+{
+  "action": "query",
+  "table": "cnfashionbi_scs.scs_ads_roll_out_rab_roas_data",
+  "date_column": "date",
+  "latest_day": true,
+  "latest_scope": "filtered",
+  "filters": [
+    { "column": "site", "operator": "=", "value": "BRFA" }
+  ]
+}

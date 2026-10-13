@@ -1,0 +1,69 @@
+{
+  "id": "growth",
+  "name": "商品成长分析",
+  "source": "https://datasuite.shopee.io/diana2/topic/15496",
+  "verifiedAt": "2026-10-08",
+  "tables": [
+    {
+      "name": "cnfashionbi_scs.scs_item_growth_performance_by_day",
+      "label": "商品成长每日表现",
+      "purpose": "查按自然日的成长阶段、店铺和广告表现",
+      "grain": "日粒度",
+      "dateColumn": "grass_date",
+      "siteColumn": "grass_region"
+    },
+    {
+      "name": "cnfashionbi_scs.scs_item_growth_performance",
+      "label": "成长周期汇总",
+      "purpose": "查成长周期、前 14 天及各阶段的汇总表现",
+      "grain": "成长周期粒度，不是当日快照",
+      "dateColumn": "grow_start_date",
+      "siteColumn": "grass_region"
+    },
+    {
+      "name": "cnfashionbi_scs.ads_schedule_investment_script_l_growth_og",
+      "label": "成长调度操作日志",
+      "purpose": "查广告调度的操作类型和执行结果",
+      "grain": "操作日志记录",
+      "dateColumn": "grass_date",
+      "siteColumn": "location"
+    },
+    {
+      "name": "cnfashionbi_scs.scs_ads_roll_out_growth_first_day_data",
+      "label": "成长首日调度数据",
+      "purpose": "查成长首日规则输入和调度动作",
+      "grain": "首日调度记录",
+      "dateColumn": "grass_date",
+      "siteColumn": "site"
+    },
+    {
+      "name": "dev_cnfashionbi_scs.scs_ads_roll_out_growth_test_log",
+      "label": "成长预算调整日志",
+      "purpose": "查成长广告预算和 ROAS 调整的输入、判断与操作",
+      "grain": "预算调整日志记录",
+      "dateColumn": "grass_date",
+      "siteColumn": "site"
+    },
+    {
+      "name": "dev_cnfashionbi_scs.scs_ads_roll_out_growth_create_log",
+      "label": "成长广告创建日志",
+      "purpose": "查成长广告创建时的类型、目标和预算",
+      "grain": "广告创建日志记录",
+      "dateColumn": "grass_date",
+      "siteColumn": "site"
+    }
+  ],
+  "rules": [
+    "日趋势用每日表现表；周期汇总按 grow_start_date 筛选，不能当作当天 GMV。",
+    "TH 每日表现 grass_region=TH；调度日志 location=THGO，预算调整/创建日志 site=THGO。其他映射未经确认。",
+    "整体 ROAS 用 SUM(ads_gmv)/SUM(ads_exp)，不取逐行 ROAS 的简单平均。分母为零显示空值。",
+    "实验组与对照组只作观察性比较，不能直接声称因果增量。",
+    "不在主题配置中手工维护完整字段列表；字段不确定时先从真实 Spark schema 获取。",
+    "查询需明确时间范围或最新一天；无数据、查询失败、预览截断分别标记。"
+  ],
+  "examples": [
+    "查 TH 最新一天各成长阶段的订单、GMV、广告花费和整体 ROAS",
+    "按 TH 最新一天的实验分组比较 GMV、订单、广告花费，不作因果结论",
+    "查 THGO 最新一天预算调整日志，各 operate 的记录数"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "maxConcurrent": 2,
+  "maxChildren": 4,
+  "agents": [
+    { "id": "reader", "label": "资料阅读 Agent", "instructions": "根据明确分派的任务读取资料，只使用允许的只读工具。答案说明实际来源，缺少资料就明确报告。", "tools": ["list_workspace", "read_file", "search_workspace", "fetch_url"], "research": false, "timeoutMs": 120000, "maxConcurrent": 2 },
+    { "id": "researcher", "label": "HotpotQA 研究 Agent", "instructions": "完成分派的 HotpotQA 原题，保留支持事实出处，遵守研究 Skill。", "tools": ["search_passages", "open_passage"], "research": true, "timeoutMs": 120000, "maxConcurrent": 2 }
+  ]
+}

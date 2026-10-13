@@ -1,0 +1,11 @@
+{
+  "description": "2026-10-10 dday_get_current_budget 失败：Data API 返回 0 行，空 DataFrame 没有 region 列，KeyError 只是表现。",
+  "task": {"server": "automation", "dag_id": "dday_get_current_budget", "dag_run_id": "olivia.zhang2026-10-10-01-44-04",
+           "task_id": "dday_get_current_budget", "try_number": 1, "start_date": "2026-10-09T17:44:09+00:00"},
+  "traceback": {"server_path": "/home/toc/SSE/yara/ads/dday_get_current_budget.py", "line": 178,
+                "text": "df = df[df['region'] == region]"},
+  "data_api": {"api_name": "cnfashionbi_scs.get_current_budget", "version": "ozgurgr5zt4icuun"},
+  "answer_must_mention": ["sql datas: 0", "KeyError", "grass_date", "date_add"],
+  "answer_must_mention_any": [["0 行", "空结果", "没有数据", "无数据"]],
+  "answer_must_not_mention": ["已修改", "已重跑"]
+}

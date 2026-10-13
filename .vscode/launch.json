@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python：逐步学习 Agent",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/python/debug_agent.py",
+      "python": "${workspaceFolder}/.venv-di/bin/python",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "stopOnEntry": true
+    },
+    {
+      "name": "Python：工具 Playground",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/python/playground.py",
+      "python": "${workspaceFolder}/.venv-di/bin/python",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}
