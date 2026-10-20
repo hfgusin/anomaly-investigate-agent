@@ -1,5 +1,7 @@
 # anomaly-investigate-agent
 
+当前业务方向是广告自动化排查与商品操作追溯。已实现能力、验证边界及岗位对照见 [作品集说明](portfolio/README.md) 和 [补强计划](docs/portfolio-improvement-plan.md)。下文保留最初 OpenClaw Mirror 的工程背景与运行说明。
+
 # OpenClaw Mirror
 
 以 OpenClaw 2026.9.6 为目标、逐模块独立实现的本地 Agent 项目。当前有 Gateway、持久化会话和 HotpotQA 多跳资料研究的第一版；尚未达到 OpenClaw 的功能或协议兼容。当前完成度、缺口和后续顺序见 [P0～P13 总路线图](docs/roadmap.md)；原版实测观察见 [P0 对照](docs/parity.md)。

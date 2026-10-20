@@ -5,6 +5,8 @@ import ast
 import hashlib
 import json
 from pathlib import Path
+from typing import Annotated
+from pydantic import Field
 import re
 
 from langchain_core.tools import ToolException, tool
@@ -44,6 +46,10 @@ def _inspect(text: str, python: bool):
         except SyntaxError:
             tree = None
         for node in ast.walk(tree) if tree else []:
+            if isinstance(node, ast.Constant) and isinstance(node.value, str) and "PRIVATE KEY-----" in node.value:
+                segment = ast.get_source_segment(text, node)
+                if segment:
+                    secrets.append(segment)
             if not isinstance(node, ast.Call):
                 continue
             name = node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", "")
@@ -66,7 +72,9 @@ def _inspect(text: str, python: bool):
 
 @tool(parse_docstring=True)
 def read_project_source(server_path: str, start_line: int = 1, end_line: int = 120,
-                        expected_line: int | None = None, expected_text: str | None = None) -> dict:
+                        expected_line: int | None = None, expected_text: str | None = None,
+                        keyword: Annotated[str | None, Field(min_length=1)] = None,
+                        context_lines: Annotated[int, Field(ge=0, le=30)] = 8) -> dict:
     """按服务器路径读取映射的本地源码及 Data API 引用；本地文件不一定与服务器运行时版本一致。
 
     Args:
@@ -75,6 +83,8 @@ def read_project_source(server_path: str, start_line: int = 1, end_line: int = 1
         end_line: 结束行，包含该行；一次最多 160 行。
         expected_line: traceback 里该文件的行号；与 expected_text 一起传，用来核对本地是否和运行时同版本。
         expected_text: traceback 里该行的代码原文。
+        keyword: 在脱敏源码中定位字面关键词，例如 log_df 或 def read_gsheet。
+        context_lines: 每个关键词匹配处前后读取的行数，总计最多 160 行。
     """
     if start_line < 1 or end_line < start_line or end_line - start_line >= 160:
         raise ToolException("行号范围不合法，一次最多 160 行。")
@@ -94,10 +104,19 @@ def read_project_source(server_path: str, start_line: int = 1, end_line: int = 1
         local = lines[expected_line - 1].strip() if expected_line <= len(lines) else None
         match = {"expected_line": expected_line, "local_text": local, "same_line": expected_line in found,
                  "found_at_lines": found[:10]}
-    selected = "\n".join(f"{i + 1}: {line}" for i, line in enumerate(lines) if start_line <= i + 1 <= end_line)
-    return {"server_path": server_path, "local_path": str(path), "start_line": start_line,
-            "end_line": min(end_line, len(lines)), "total_lines": len(lines), "code": selected[:14000],
-            "truncated": len(selected) > 14000, "local_sha256": hashlib.sha256(text.encode()).hexdigest(),
+    matched = [i + 1 for i, line in enumerate(lines) if keyword and keyword in line]
+    indices = list(range(start_line - 1, min(end_line, len(lines))))
+    omitted = False
+    if keyword:
+        indices = sorted({j for i in matched for j in range(max(0, i - 1 - context_lines), min(len(lines), i + context_lines))})
+        omitted = len(indices) > 160
+        indices = indices[:160]
+    selected = "\n".join(f"{i + 1}: {lines[i]}" for i in indices)
+    return {"server_path": server_path, "local_path": str(path), "start_line": indices[0] + 1 if indices else start_line,
+            "end_line": indices[-1] + 1 if indices else 0, "total_lines": len(lines), "code": selected[:14000],
+            "truncated": omitted or len(selected) > 14000,
+            **({"matched_lines": matched, "returned_lines": [i + 1 for i in indices]} if keyword else {}),
+            "local_sha256": hashlib.sha256(text.encode()).hexdigest(),
             "data_api_references": references, "line_match": match}
 
 

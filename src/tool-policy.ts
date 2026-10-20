@@ -1,10 +1,15 @@
+import { readFileSync } from "node:fs";
+
+export const TOOL_LIMITS: { query: number; record: number; warnAt: number } =
+  JSON.parse(readFileSync(new URL("../config/tool-limits.json", import.meta.url), "utf8"));
 export type ToolRisk = "read" | "network_read" | "write" | "execute" | "delegate" | "unknown";
 
-type PythonToolPolicy = { risk: ToolRisk; label: string; autoApprove: boolean };
+type PythonToolPolicy = { risk: ToolRisk; label: string; autoApprove: boolean; budgetGroup?: "query" | "record" };
 const pythonTools = new Map<string, PythonToolPolicy>();
 export function registerPythonTool(name: string, policy: PythonToolPolicy) { pythonTools.set(name, policy); }
 
 export function toolLabel(name: string): string | undefined { return pythonTools.get(name)?.label || undefined; }
+export function toolBudgetGroup(name: string): "query" | "record" { return pythonTools.get(name)?.budgetGroup ?? "query"; }
 
 export function isAutoApproved(name: string): boolean {
   const policy = pythonTools.get(name);

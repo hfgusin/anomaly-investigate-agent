@@ -79,86 +79,86 @@ export class ReadFileTool {
 }
 
 /** Search bounded ordinary text files without exposing whole files to the model. */
-export class SearchWorkspaceTool {
-  readonly name = "search_workspace";
-  readonly definition = {
-    type: "function" as const,
-    function: {
-      name: "search_workspace",
-      description: "Search only local UTF-8 files in the dedicated workspace when the user asks about local/project files. NOT web search or an encyclopedia. Empty matches say nothing about general knowledge or whether a book/person exists. Query is an exact substring, not keyword or semantic search. Returns matching paths, line numbers, and short excerpts.",
-      parameters: {
-        type: "object", properties: { query: { type: "string", description: "Exact text to search for" } },
-        required: ["query"], additionalProperties: false,
-      },
-    },
-  };
+// export class SearchWorkspaceTool {
+//   readonly name = "search_workspace";
+//   readonly definition = {
+//     type: "function" as const,
+//     function: {
+//       name: "search_workspace",
+//       description: "Search only local UTF-8 files in the dedicated workspace when the user asks about local/project files. NOT web search or an encyclopedia. Empty matches say nothing about general knowledge or whether a book/person exists. Query is an exact substring, not keyword or semantic search. Returns matching paths, line numbers, and short excerpts.",
+//       parameters: {
+//         type: "object", properties: { query: { type: "string", description: "Exact text to search for" } },
+//         required: ["query"], additionalProperties: false,
+//       },
+//     },
+//   };
 
-  constructor(private readonly workspace: string) {}
+//   constructor(private readonly workspace: string) {}
 
-  async execute(args: unknown, signal: AbortSignal): Promise<string> {
-    signal.throwIfAborted();
-    if (!args || typeof args !== "object" || Array.isArray(args) || Object.keys(args).length !== 1 ||
-      typeof (args as { query?: unknown }).query !== "string") {
-      throw new AppError("TOOL_INVALID_ARGS", "search_workspace 只接受 query 字符串参数。");
-    }
-    const query = (args as { query: string }).query.trim();
-    if (!query || query.length > 200 || query.includes("\0")) {
-      throw new AppError("TOOL_INVALID_QUERY", "搜索词必须是 1–200 个普通字符。");
-    }
-    const root = await realpath(this.workspace);
-    const files = await this.filesUnder(root, signal);
-    const matches: Array<{ path: string; line: number; excerpt: string }> = [];
-    for (const file of files) {
-      signal.throwIfAborted();
-      if (matches.length >= 20) break;
-      let content: string;
-      try { content = await this.readText(file.absolute, signal); }
-      catch (error) {
-        if (error instanceof AppError && ["TOOL_NOT_TEXT", "TOOL_TOO_LARGE"].includes(error.code)) continue;
-        throw error;
-      }
-      for (const [index, line] of content.split(/\r?\n/u).entries()) {
-        if (!line.includes(query)) continue;
-        matches.push({ path: file.relative, line: index + 1, excerpt: line.trim().slice(0, 240) });
-        if (matches.length >= 20) break;
-      }
-    }
-    return JSON.stringify({ query, matches, truncated: matches.length >= 20 });
-  }
+//   async execute(args: unknown, signal: AbortSignal): Promise<string> {
+//     signal.throwIfAborted();
+//     if (!args || typeof args !== "object" || Array.isArray(args) || Object.keys(args).length !== 1 ||
+//       typeof (args as { query?: unknown }).query !== "string") {
+//       throw new AppError("TOOL_INVALID_ARGS", "search_workspace 只接受 query 字符串参数。");
+//     }
+//     const query = (args as { query: string }).query.trim();
+//     if (!query || query.length > 200 || query.includes("\0")) {
+//       throw new AppError("TOOL_INVALID_QUERY", "搜索词必须是 1–200 个普通字符。");
+//     }
+//     const root = await realpath(this.workspace);
+//     const files = await this.filesUnder(root, signal);
+//     const matches: Array<{ path: string; line: number; excerpt: string }> = [];
+//     for (const file of files) {
+//       signal.throwIfAborted();
+//       if (matches.length >= 20) break;
+//       let content: string;
+//       try { content = await this.readText(file.absolute, signal); }
+//       catch (error) {
+//         if (error instanceof AppError && ["TOOL_NOT_TEXT", "TOOL_TOO_LARGE"].includes(error.code)) continue;
+//         throw error;
+//       }
+//       for (const [index, line] of content.split(/\r?\n/u).entries()) {
+//         if (!line.includes(query)) continue;
+//         matches.push({ path: file.relative, line: index + 1, excerpt: line.trim().slice(0, 240) });
+//         if (matches.length >= 20) break;
+//       }
+//     }
+//     return JSON.stringify({ query, matches, truncated: matches.length >= 20 });
+//   }
 
-  private async filesUnder(root: string, signal: AbortSignal): Promise<Array<{ absolute: string; relative: string }>> {
-    const files: Array<{ absolute: string; relative: string }> = [];
-    const visit = async (directory: string, prefix: string, depth: number): Promise<void> => {
-      if (depth > 4 || files.length >= 100) return;
-      const entries = await readdir(directory, { withFileTypes: true });
-      for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-        signal.throwIfAborted();
-        if (entry.name.startsWith(".")) continue;
-        const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
-        const absolutePath = join(directory, entry.name);
-        if (entry.isSymbolicLink()) continue;
-        if (entry.isDirectory()) await visit(absolutePath, relativePath, depth + 1);
-        else if (entry.isFile()) files.push({ absolute: absolutePath, relative: relativePath });
-        if (files.length >= 100) return;
-      }
-    };
-    await visit(root, "", 0);
-    return files;
-  }
+//   private async filesUnder(root: string, signal: AbortSignal): Promise<Array<{ absolute: string; relative: string }>> {
+//     const files: Array<{ absolute: string; relative: string }> = [];
+//     const visit = async (directory: string, prefix: string, depth: number): Promise<void> => {
+//       if (depth > 4 || files.length >= 100) return;
+//       const entries = await readdir(directory, { withFileTypes: true });
+//       for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+//         signal.throwIfAborted();
+//         if (entry.name.startsWith(".")) continue;
+//         const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+//         const absolutePath = join(directory, entry.name);
+//         if (entry.isSymbolicLink()) continue;
+//         if (entry.isDirectory()) await visit(absolutePath, relativePath, depth + 1);
+//         else if (entry.isFile()) files.push({ absolute: absolutePath, relative: relativePath });
+//         if (files.length >= 100) return;
+//       }
+//     };
+//     await visit(root, "", 0);
+//     return files;
+//   }
 
-  private async readText(path: string, signal: AbortSignal): Promise<string> {
-    const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-    try {
-      const stat = await file.stat();
-      if (!stat.isFile() || stat.size > MAX_BYTES) throw new AppError("TOOL_TOO_LARGE", "文件超过搜索上限。");
-      const buffer = Buffer.alloc(MAX_BYTES + 1);
-      const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
-      signal.throwIfAborted();
-      try { return new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, bytesRead)); }
-      catch { throw new AppError("TOOL_NOT_TEXT", "文件不是有效的 UTF-8 文本。"); }
-    } finally { await file.close(); }
-  }
-}
+//   private async readText(path: string, signal: AbortSignal): Promise<string> {
+//     const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+//     try {
+//       const stat = await file.stat();
+//       if (!stat.isFile() || stat.size > MAX_BYTES) throw new AppError("TOOL_TOO_LARGE", "文件超过搜索上限。");
+//       const buffer = Buffer.alloc(MAX_BYTES + 1);
+//       const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
+//       signal.throwIfAborted();
+//       try { return new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, bytesRead)); }
+//       catch { throw new AppError("TOOL_NOT_TEXT", "文件不是有效的 UTF-8 文本。"); }
+//     } finally { await file.close(); }
+//   }
+// }
 
 export type ToolResult = { content: string; isError: boolean; denied?: boolean; effectUnknown?: boolean };
 
@@ -177,7 +177,7 @@ export class ToolRegistry {
   } } };
   private readonly activeWritePaths = new Set<string>();
   readonly readFile: ReadFileTool;
-  readonly searchWorkspace: SearchWorkspaceTool;
+  // readonly searchWorkspace: SearchWorkspaceTool;
   readonly listWorkspace: ListWorkspaceTool;
   readonly writeFile: WriteFileTool;
   readonly fetchUrl: FetchUrlTool;
@@ -190,7 +190,7 @@ export class ToolRegistry {
     if (lstatSync(workspace).isSymbolicLink()) throw new AppError("INVALID_CONFIG", "工具工作区不能是符号链接。");
     this.readFile = new ReadFileTool(workspace);
     this.diExport = new DiExportTool(resolve(workspace, ".."));
-    this.searchWorkspace = new SearchWorkspaceTool(workspace);
+    // this.searchWorkspace = new SearchWorkspaceTool(workspace);
     this.listWorkspace = new ListWorkspaceTool(workspace);
     this.writeFile = new WriteFileTool(workspace);
     this.fetchUrl = new FetchUrlTool();
@@ -200,12 +200,12 @@ export class ToolRegistry {
       this.researchWorker = new ResearchWorkerClient(datasetPath);
     }
   }
-  get definitions() { return [...this.pythonTools.map(e => e.definition), ...[this.readFile.definition, this.searchWorkspace.definition,
+  get definitions() { return [...this.pythonTools.map(e => e.definition), ...[this.readFile.definition,
     this.listWorkspace.definition, this.writeFile.definition, this.fetchUrl.definition,
     ...this.diExport.definitions,
     ...(this.enableCode ? [this.runJavaScript.definition] : []), ...(this.automationReader ? [this.automationTool.definition] : [])].filter(d => !this.pythonNames.has(d.function.name))]; }
   get catalog() {
-    return [...this.pythonTools.map(e => ({ name: e.definition.function.name })), ...[this.readFile, this.searchWorkspace, this.listWorkspace, this.writeFile, this.fetchUrl, this.runJavaScript,
+    return [...this.pythonTools.map(e => ({ name: e.definition.function.name })), ...[this.readFile,   this.listWorkspace, this.writeFile, this.fetchUrl, this.runJavaScript,
       this.diExport, { name: this.diExport.sqlName },
       ...(this.automationReader ? [this.automationTool] : [])].filter(t => !this.pythonNames.has(t.name))]
       .map((tool) => ({ name: tool.name, risk: toolRisk(tool.name), enabled: tool.name !== "run_javascript" || this.enableCode }));
@@ -254,7 +254,6 @@ export class ToolRegistry {
             failure_examples: (view.business.data?.details ?? []).filter(filter).filter((r: any) => r.execution_status === "failed").slice(0,3) }, sources: view.sources }) };
       }
       if (name === this.readFile.name) return { content: await this.readFile.execute(args, signal), isError: false };
-      if (name === this.searchWorkspace.name) return { content: await this.searchWorkspace.execute(args, signal), isError: false };
       if (name === this.listWorkspace.name) return { content: await this.listWorkspace.execute(args, signal), isError: false };
       if (name === this.writeFile.name) {
         const key = String((args as { path?: unknown } | null)?.path ?? "").toLowerCase();

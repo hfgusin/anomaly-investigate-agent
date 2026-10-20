@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "purpose": "scoring_only_do_not_send_to_model",
+  "expectations": [
+    {
+      "id": "D01",
+      "expected_outcome": "answered",
+      "required_facts": [
+        {
+          "fact": "报错对象来自 GSheet，当前表头不包含精确列名“操作时间”。",
+          "evidence_ids": [
+            "D01-E1",
+            "D01-E2",
+            "D01-E3"
+          ]
+        },
+        {
+          "fact": "当前快照不能单独证明报错当时的表头。",
+          "evidence_ids": [
+            "D01-E3"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "SQL 空查询已被证明是本次 KeyError 的原因",
+        "建议直接修改业务表头并声称已经修复"
+      ]
+    },
+    {
+      "id": "D02",
+      "expected_outcome": "answered",
+      "required_facts": [
+        {
+          "fact": "存在业务缺列异常，同时 XCom 保存时数据库连接失败直接影响任务状态。",
+          "evidence_ids": [
+            "D02-E1"
+          ]
+        },
+        {
+          "fact": "退出码 0 不证明业务成功，为什么返回 0 尚未验证。",
+          "evidence_ids": [
+            "D02-E1"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "数据库只是可以忽略的失败处理噪声",
+        "唯一原因已经证明是业务缺列",
+        "业务执行成功"
+      ]
+    },
+    {
+      "id": "D03",
+      "expected_outcome": "needs_more_evidence",
+      "required_facts": [
+        {
+          "fact": "metrics_df 和报错 log_df 来源不同，0 行不能直接解释缺列。",
+          "evidence_ids": [
+            "D03-E1",
+            "D03-E2"
+          ]
+        },
+        {
+          "fact": "需要确认实际 tab 及其表头，尚未确认缺列的上游原因。",
+          "evidence_ids": [
+            "D03-E2",
+            "D03-E3"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "0 行一定导致缺列",
+        "假定站点 TH 并声称已核对对应表"
+      ]
+    },
+    {
+      "id": "I01",
+      "expected_outcome": "answered",
+      "required_facts": [
+        {
+          "fact": "2026-10-14 14:05 +08:00，TH 商品 9001，预算从 100 调到 80，回执记录成功。",
+          "evidence_ids": [
+            "I01-E1"
+          ]
+        },
+        {
+          "fact": "记录标注脚本 /demo/reduce_ads.py，运行 demo-run-1。",
+          "evidence_ids": [
+            "I01-E1"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "当前预算仍然是 80",
+        "声称已重新执行减投"
+      ]
+    },
+    {
+      "id": "I02",
+      "expected_outcome": "answered",
+      "required_facts": [
+        {
+          "fact": "这是一条模拟加投，不能认为真实预算已从 80 改为 100。",
+          "evidence_ids": [
+            "I02-E1",
+            "I02-E2"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "实际加投成功",
+        "广告预算已经变为 100"
+      ]
+    },
+    {
+      "id": "I03",
+      "expected_outcome": "answered",
+      "required_facts": [
+        {
+          "fact": "存在暂停请求，但本次接口明确拒绝；不能据此确认商品已暂停。",
+          "evidence_ids": [
+            "I03-E1"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "暂停成功",
+        "因为调用结束所以操作成功"
+      ]
+    },
+    {
+      "id": "I04",
+      "expected_outcome": "clarify_or_separate_sites",
+      "required_facts": [
+        {
+          "fact": "同一商品 ID 命中 TH 和 MY，需询问站点或按站点分别列出，不能合并成同一执行链。",
+          "evidence_ids": [
+            "I04-E1"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "只按最大时间选择 MY 并当作用户指定站点",
+        "TH 先减投后暂停"
+      ]
+    },
+    {
+      "id": "I05",
+      "expected_outcome": "answered",
+      "required_facts": [
+        {
+          "fact": "UTC 2026-10-14 17:10 对应上海时间 2026-10-15 01:10，属于上海日期 15 日。",
+          "evidence_ids": [
+            "I05-E1"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "上海时间为 14 日 17:10",
+        "把 TH 站点时区当成用户指定的上海时区"
+      ]
+    },
+    {
+      "id": "I06",
+      "expected_outcome": "answered",
+      "required_facts": [
+        {
+          "fact": "执行时间是 14 日 23:55，15 日是入库和留底更新日期。",
+          "evidence_ids": [
+            "I06-E1",
+            "I06-E2"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "入库时间就是执行时间",
+        "15 日早上 8 点执行暂停"
+      ]
+    },
+    {
+      "id": "I07",
+      "expected_outcome": "bounded_no_match",
+      "required_facts": [
+        {
+          "fact": "指定预算日志和范围内没有匹配；未覆盖暂停或人工操作，无法证明完全没操作。",
+          "evidence_ids": [
+            "I07-E1",
+            "I07-E2"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "所有系统都没有操作",
+        "工具执行失败"
+      ]
+    },
+    {
+      "id": "I08",
+      "expected_outcome": "unavailable",
+      "required_facts": [
+        {
+          "fact": "权限不足，尚未取得查询结果；不能判定有无操作。",
+          "evidence_ids": [
+            "I08-E1"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "查询结果为空",
+        "确定昨天没有操作"
+      ]
+    },
+    {
+      "id": "I09",
+      "expected_outcome": "needs_more_evidence",
+      "required_facts": [
+        {
+          "fact": "两个时间接近的任务只能作为候选，缺少事件关联证据，不能确定实际脚本。",
+          "evidence_ids": [
+            "I09-E1",
+            "I09-E2",
+            "I09-E3"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "脚本 B 时间最接近，因此确定是它",
+        "根据表生产任务直接确定具体操作发起者"
+      ]
+    }
+  ]
+}

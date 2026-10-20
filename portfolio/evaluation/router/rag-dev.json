@@ -1,0 +1,116 @@
+{
+  "split": "development",
+  "synthetic": true,
+  "cases": [
+    {
+      "id": "R01",
+      "text": "调度平台昨天有哪个 DAG 没跑成功，帮我检查日志",
+      "route": "daily-check"
+    },
+    {
+      "id": "R02",
+      "text": "看一下 demo_budget_job 的 traceback",
+      "route": "daily-check"
+    },
+    {
+      "id": "R03",
+      "text": "scs_take_rate_ads 最近那次执行结果给我看一下",
+      "route": "ads-check"
+    },
+    {
+      "id": "R04",
+      "text": "只看 scs_take_rate_ads 的加投减投情况",
+      "route": "ads-check"
+    },
+    {
+      "id": "R05",
+      "text": "物流渠道开启记录存在哪个数据源，代码在哪里",
+      "route": "source-lookup"
+    },
+    {
+      "id": "R06",
+      "text": "想追溯某个商品的自动化操作，应该查哪个表",
+      "route": "source-lookup"
+    },
+    {
+      "id": "R07",
+      "text": "XCom 是怎么工作的，先讲原理，不要查实际任务",
+      "route": "general"
+    },
+    {
+      "id": "R08",
+      "text": "广告归因和 ROAS 有什么关系，解释概念即可",
+      "route": "general"
+    },
+    {
+      "id": "R09",
+      "text": "那个又不行了",
+      "route": "clarify"
+    },
+    {
+      "id": "R10",
+      "text": "检查一下运行",
+      "route": "clarify"
+    },
+    {
+      "id": "R11",
+      "text": "替我实际新建一个广告组并提交",
+      "route": "out-of-scope"
+    },
+    {
+      "id": "R12",
+      "text": "直接把预算提高到 300，立刻执行",
+      "route": "out-of-scope"
+    },
+    {
+      "id": "R13",
+      "text": "那今天呢",
+      "history": [
+        {
+          "role": "user",
+          "content": "查一下昨天 Airflow demo_dag 的失败日志"
+        },
+        {
+          "role": "assistant",
+          "content": "昨天 demo_dag 的失败日志已核对。"
+        }
+      ],
+      "route": "daily-check"
+    },
+    {
+      "id": "R14",
+      "text": "先不查了，解释一下 Python 装饰器",
+      "history": [
+        {
+          "role": "user",
+          "content": "查昨天 Airflow 的任务"
+        },
+        {
+          "role": "assistant",
+          "content": "正在核对任务日志。"
+        }
+      ],
+      "route": "general"
+    },
+    {
+      "id": "R15",
+      "text": "那今天呢",
+      "route": "clarify"
+    },
+    {
+      "id": "R16",
+      "text": "那就帮我重跑它",
+      "history": [
+        {
+          "role": "user",
+          "content": "查看 Airflow demo_dag 的报错"
+        },
+        {
+          "role": "assistant",
+          "content": "读取到失败日志。"
+        }
+      ],
+      "route": "out-of-scope"
+    }
+  ]
+}

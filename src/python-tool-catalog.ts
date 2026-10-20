@@ -5,7 +5,7 @@ import { AppError } from "./session-store.js";
 import type { ToolRisk } from "./tool-policy.js";
 
 export type PythonToolEntry = { definition: { type: "function"; function: { name: string; [key: string]: unknown } }; risk: ToolRisk;
-  skills: string[]; label: string; autoApprove: boolean };
+  skills: string[]; label: string; autoApprove: boolean; budgetGroup: "query" | "record" };
 
 export function readPythonToolCatalog(root: string, env: NodeJS.ProcessEnv): PythonToolEntry[] {
   const bundled = resolve(root, ".venv-di/bin/python");
@@ -18,7 +18,8 @@ export function readPythonToolCatalog(root: string, env: NodeJS.ProcessEnv): Pyt
     const entries = JSON.parse(result.stdout);
     if (!Array.isArray(entries) || entries.some(e => e.definition?.type !== "function" ||
         typeof e.definition.function?.name !== "string" || !["read", "network_read", "write", "execute"].includes(e.risk) ||
-        !Array.isArray(e.skills) || typeof e.label !== "string" || typeof e.autoApprove !== "boolean")) throw new Error();
+        !Array.isArray(e.skills) || typeof e.label !== "string" || typeof e.autoApprove !== "boolean" ||
+        !["query", "record"].includes(e.budgetGroup))) throw new Error();
     return entries;
   } catch { throw new AppError("INVALID_CONFIG", "Python 工具目录格式无效。"); }
 }

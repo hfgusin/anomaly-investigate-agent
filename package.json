@@ -11,6 +11,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "debug": "npm run build && node scripts/debug-server.mjs",
+    "studio": "LANGSMITH_TRACING=false LANGCHAIN_TRACING_V2=false LANGGRAPH_CLI_NO_ANALYTICS=1 .venv-di/bin/langgraph dev --host 127.0.0.1 --no-browser",
     "mirror": "node scripts/mirror-cli.mjs",
     "airflow:check": "cd python && ../.venv-di/bin/python -m agent_backend.airflow_cli airflow_list_dags '{\"limit\": 10}'",
     "rag:prepare": "pnpm build && node dist/ads-rag/prepare.js",

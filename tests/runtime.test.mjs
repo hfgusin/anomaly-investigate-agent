@@ -432,3 +432,34 @@ test("a generating memory snapshot returns to pending after restart", () => {
     assert.equal(store.claimMemorySummary(snapshotId), true);
   } finally { store?.close(); rmSync(directory, { recursive: true, force: true }); }
 });
+
+for (const historyChars of [0, 70000]) {
+  test(`tool budget borrows unused history space while respecting total budget (${historyChars} history chars)`, async () => {
+    const store = new SessionStore(':memory:');
+    const session = store.create();
+    if (historyChars) {
+      const prior = store.accept(session.id, 'prior', 'previous');
+      store.start(prior.id); store.appendOutput(prior.id, 'x'.repeat(historyChars)); store.finish(prior.id, 'completed');
+    }
+    let allocated;
+    const runtime = { info, promptOverheadChars: () => 11000, async *stream(input) {
+      allocated = input.maxToolResultChars;
+      const messages = input.messages.reduce((sum, message) => sum + message.content.length, 0);
+      assert.equal(messages + allocated + 11000 + 2048, 120000);
+      yield 'done';
+    } };
+    const tools = { definitions: [{ type: 'function', function: { name: 'read_file' } }] };
+    const coordinator = new RunCoordinator(store, runtime, () => {}, 1000, tools);
+    try {
+      const run = coordinator.accept(session.id, 'current', 'read logs');
+      while (isPending(store.getRun(run.id))) await delay(5);
+      const finished = store.getRun(run.id);
+      assert.equal(finished.status, 'completed');
+      const trace = JSON.parse(finished.contextTrace);
+      assert.equal(trace.toolResultReserveChars, allocated);
+      assert.equal(trace.includedTurns, historyChars ? 1 : 0);
+      assert.ok(allocated >= 30000);
+      if (!historyChars) assert.ok(allocated > 38061);
+    } finally { await coordinator.shutdown(); store.close(); }
+  });
+}

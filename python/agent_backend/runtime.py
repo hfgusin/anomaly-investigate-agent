@@ -6,7 +6,7 @@ import asyncio
 import json
 import os
 import sys
-from contextlib import aclosing
+from contextlib import aclosing, nullcontext
 from dataclasses import dataclass
 from typing import Literal
 
@@ -16,6 +16,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.tools import StructuredTool
 from langchain_openai import ChatOpenAI
 
+from . import demo_world
 from .ark_model import ArkResponsesChatModel, BackendError
 from .tools import tools_by_name
 from .middleware import GatewayRuntimeMiddleware
@@ -73,6 +74,8 @@ def create_model():
 def build_messages(request: StartRequest, history: list[BaseMessage] | None):
     system = POLICY + ("\n\n<active_skill>\n" + request.skillInstruction + "\n</active_skill>"
                        if request.skillInstruction else "")
+    system += "\n调用工具前，用一两句中文说明：已有结果确认了什么（引用工具名或证据），还缺什么，以及本次查询目的。首次调用只说明目的。只给简短结论和依据，不输出内部思考过程；没有证据时明确说尚未确认。"
+    system += "\n用户明确指定输出格式或给出输出样例时，严格按该格式逐项输出，优先于默认报告模板。不得自行改成表格、合并重复字段或省略记录和字段；用户明确要求筛选、汇总或省略时按其要求处理。纯格式整理直接输出整理结果，不额外添加分析报告。内容过长无法一次完整输出时明确标注未输出部分，不得声称完整。"
     messages = list(history or [])
     messages.extend(HumanMessage(content=message.content) if message.role == "user"
                     else AIMessage(content=message.content) for message in request.messages)
@@ -165,9 +168,11 @@ async def run(request: StartRequest, model=None, *, send=emit, recv=receive, his
 
 
 async def main():
+    world = os.environ.get("MIRROR_DEMO_WORLD")
     try:
         request = StartRequest.model_validate(await receive())
-        await run(request)
+        with demo_world.installed(demo_world.load(world)) if world else nullcontext():
+            await run(request)
     except BackendError as error:
         emit("error", code=error.code, message=str(error))
     except Exception as error:

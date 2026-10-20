@@ -17,6 +17,7 @@ import type { GatewayLimitConfig } from "./rate-limit.js";
 import { VerificationReportReader } from "./verification-report.js";
 import { AutomationDashboard } from "./automation-dashboard.js";
 import { DailyScan } from "./daily-scan.js";
+import { pythonRouter } from "./intent-router.js";
 import { DiExportTool } from "./tools/di-export.js";
 import { growthTopic } from "./growth-topic.js";
 
@@ -115,7 +116,7 @@ export async function createApplication(store: SessionStore, runtime: AgentRunti
     }
     response.writeHead(404); response.end();
   });
-  const websocketServer = new WebSocketServer({ noServer: true, maxPayload: 128_000 });
+  const websocketServer = new WebSocketServer({ noServer: true, maxPayload: 512_000 });
   server.on("upgrade", (request, socket, head) => {
     const origin = request.headers.origin;
     if (request.url !== "/gateway" || !validHost(request) ||
@@ -159,6 +160,7 @@ async function main(): Promise<void> {
       config.skills, new EvaluationReportReader(resolve(root, ".data/hotpotqa/gateway-paired-2026-09-30.json"), config.hotpotDataPath), config.gatewayLimits, config.agents);
     application.gateway.coordinator.resumeQueuedResearchRuns();
     application.dailyScan.start();
+    if (process.env.MIRROR_ROUTER === "true") application.gateway.coordinator.setRouter(pythonRouter(root));
     await new Promise<void>((done, reject) => {
       application.server.once("error", reject);
       application.server.listen(config.port, "127.0.0.1", () => {

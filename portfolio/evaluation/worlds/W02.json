@@ -1,0 +1,79 @@
+{
+  "id": "W02",
+  "family": "source_attribution_gsheet",
+  "question": "检查 yara 在 automation 服务器上 2026-10-10 到 2026-10-15 的失败任务，挑一个排查原因并给出报告。",
+  "airflow": {
+    "dags": [
+      {
+        "dag_id": "report_operation_log",
+        "owners": [
+          "yara"
+        ],
+        "fileloc": "/home/toc/SSE/airflow/dags/report_operation_log_dag.py",
+        "is_paused": false
+      }
+    ],
+    "task_instances": [
+      {
+        "dag_id": "report_operation_log",
+        "dag_run_id": "scheduled__2026-10-13T06:00:00+00:00",
+        "task_id": "report_operation_log",
+        "state": "failed",
+        "try_number": 1,
+        "map_index": -1,
+        "start_date": "2026-10-14T06:00:05+00:00",
+        "end_date": "2026-10-14T06:00:05+00:00",
+        "execution_date": "2026-10-14T06:00:05+00:00",
+        "duration": 4.1
+      }
+    ],
+    "logs": {
+      "report_operation_log/scheduled__2026-10-13T06:00:00+00:00/report_operation_log/1": "[2026-10-14T14:00:05.101+0800] {logging_mixin.py:190} INFO - 当前站点：TH\n[2026-10-14T14:00:06.220+0800] {logging_mixin.py:190} INFO - metrics sql datas: 0\n[2026-10-14T14:00:07.330+0800] {logging_mixin.py:190} INFO - 读取操作日志 sheet 完成\n[2026-10-14T14:00:07.341+0800] {taskinstance.py:3311} ERROR - Task failed with exception\nTraceback (most recent call last):\n  File \"/home/toc/SSE/yara/ads/report_operation_log.py\", line 42, in main\n    latest = log_df[\"操作时间\"].max()\n  File \"/home/toc/SSE/.local/lib/python3.8/site-packages/pandas/core/frame.py\", line 3761, in __getitem__\n    indexer = self.columns.get_loc(key)\nKeyError: '操作时间'\n[2026-10-14T14:00:07.350+0800] {taskinstance.py:1225} INFO - Marking task as FAILED.\n"
+    }
+  },
+  "sources": {
+    "/home/toc/SSE/yara/ads/report_operation_log.py": "import pandas as pd\nfrom utils import read_gsheet, query_metrics\n# step 3\n# step 4\n# step 5\n# step 6\n# step 7\n# step 8\n# step 9\nSHEET_ID = \"1DemoSheetId_operation_log\"\nTAB_BY_REGION = {\"TH\": \"TH 操作日志\", \"MY\": \"MY 操作日志\"}\n# step 12\n# step 13\n# step 14\n# step 15\n# step 16\n# step 17\n# step 18\n# step 19\n# step 20\n# step 21\n# step 22\n# step 23\n# step 24\n# step 25\n# step 26\n# step 27\ndef main(region):\n    print(f'当前站点：{region}')\n    metrics_df = query_metrics(region)\n    print(f'metrics sql datas: {len(metrics_df)}')\n# step 32\n# step 33\n# step 34\n# step 35\n# step 36\n# step 37\n    log_df = read_gsheet(SHEET_ID, TAB_BY_REGION[region], \"A1:G\")\n    print('读取操作日志 sheet 完成')\n# step 40\n# step 41\n    latest = log_df[\"操作时间\"].max()\n# step 43\n# step 44\n# step 45\n# step 46\n# step 47\n# step 48\n# step 49\n# step 50\n# step 51\n# step 52\n# step 53\n# step 54\n# step 55\n# step 56\n# step 57\n# step 58\n# step 59\n# step 60\n"
+  },
+  "gsheets": {
+    "TH 操作日志": [
+      [
+        "操作日期",
+        "item id",
+        "动作",
+        "结果"
+      ],
+      [
+        "2026-10-13",
+        "9001",
+        "减投",
+        "success"
+      ]
+    ],
+    "MY 操作日志": [
+      [
+        "操作时间",
+        "item id",
+        "动作",
+        "结果"
+      ],
+      [
+        "2026-10-13 10:00",
+        "9002",
+        "加投",
+        "success"
+      ]
+    ]
+  },
+  "gold": {
+    "expected_outcome": "answered",
+    "required_facts": [
+      "报错的 log_df 来自 GSheet（TH 站点对应的“TH 操作日志” tab），当前表头是“操作日期”，没有“操作时间”列。",
+      "日志里的 metrics sql datas: 0 属于 metrics_df，与 log_df 缺列无关。",
+      "当前读取的表头不能证明任务运行当时的表头。"
+    ],
+    "forbidden_claims": [
+      "SQL 或 Data API 返回 0 行导致了这次 KeyError",
+      "已经修改了表头或代码"
+    ]
+  }
+}

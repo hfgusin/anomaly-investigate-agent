@@ -1,10 +1,10 @@
 import type { SelectedSkill } from "./skills.js";
 import type { AgentProfile } from "./agents.js";
 import { createHash, randomUUID } from "node:crypto";
-import { mkdirSync, writeFileSync, renameSync } from "node:fs";
+import { mkdirSync, writeFileSync, renameSync, appendFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { hasSideEffect, toolLabel, toolRisk, type ToolRisk } from "./tool-policy.js";
+import { hasSideEffect, toolLabel, toolRisk, toolBudgetGroup, TOOL_LIMITS, type ToolRisk } from "./tool-policy.js";
 import { redactTrace } from "./trace-redaction.js";
 
 export type RunStatus = "queued" | "running" | "completed" | "cancelled" | "failed" | "interrupted";
@@ -28,7 +28,7 @@ export type RunEvent = { runId: string; seq: number; type: string; payload: stri
 export type ToolTrace = {
   id: string; name: string; arguments: string;
   status: "requested" | "approved" | "running" | "completed" | "failed" | "rejected" | "cancelled" | "interrupted" | "blocked" | "unknown";
-  risk?: ToolRisk; label?: string | undefined;
+  risk?: ToolRisk; label?: string | undefined; budgetGroup?: "query" | "record";
   result: string | null; startedAt: string; endedAt: string | null;
 };
 export type SteerTrace = {
@@ -62,6 +62,7 @@ export class AppError extends Error {
 
 /** A single local Gateway owns the database. Every accepted turn is durably recorded. */
 export class SessionStore {
+  private pendingTraceLines: Array<{ runId: string; line: string }> = [];
   private readonly db: DatabaseSync;
   private readonly lock: DatabaseSync | undefined;
 
@@ -296,9 +297,11 @@ export class SessionStore {
       const run = this.getRun(runId);
       if (run.status !== "running") throw new AppError("RUN_NOT_RUNNING", "工具只能在运行中调用。");
       const trace = JSON.parse(run.toolTrace) as ToolTrace[];
-      if (trace.length >= 16) throw new AppError("TOOL_LIMIT", "本次运行工具调用已达到 16 次上限。");
+      const group = toolBudgetGroup(name);
+      if (trace.filter(t => (t.budgetGroup ?? toolBudgetGroup(t.name)) === group).length >= TOOL_LIMITS[group])
+        throw new AppError("TOOL_LIMIT", `${group === "record" ? "留底" : "普通工具"}调用已达到 ${TOOL_LIMITS[group]} 次上限。`);
       if (trace.some((item) => item.id === id)) throw new AppError("TOOL_DUPLICATE", "模型重复使用了工具调用编号。");
-      trace.push({ id, name, arguments: args, risk: toolRisk(name), label: toolLabel(name), status: "requested", result: null,
+      trace.push({ id, name, budgetGroup: group, arguments: args, risk: toolRisk(name), label: toolLabel(name), status: "requested", result: null,
         startedAt: new Date().toISOString(), endedAt: null });
       this.db.prepare("UPDATE runs SET toolTrace = ?, version = version + 1 WHERE id = ?")
         .run(JSON.stringify(trace), runId);
@@ -776,11 +779,31 @@ export class SessionStore {
       .run(runId, seq, type, JSON.stringify(payload), now);
     this.db.prepare("UPDATE runs SET checkpoint = ? WHERE id = ?")
       .run(JSON.stringify(checkpoint), runId);
+    if (this.path !== ":memory:") {
+      const calls = JSON.parse(run.toolTrace) as ToolTrace[];
+      const call = calls.find(call => call.id === payload.id);
+      const context = JSON.parse(run.contextTrace);
+      const entry = redactTrace({ runId, seq, type, createdAt: now, payload,
+        ...(call ? { tool: call } : {}),
+        ...(type === "run.accepted" ? { input: run.input } : {}),
+        ...(!isPending(run) ? { output: run.output, error: run.error } : {}),
+        toolResultChars: calls.reduce((sum, call) => sum + (call.result?.length ?? 0), 0),
+        toolResultBudget: context.toolResultReserveChars ?? null });
+      this.pendingTraceLines.push({ runId, line: JSON.stringify(entry) + "\n" });
+    }
   }
 
   private transaction<T>(body: () => T): T {
     this.db.exec("BEGIN IMMEDIATE");
-    try { const result = body(); this.db.exec("COMMIT"); return result; }
-    catch (error) { this.db.exec("ROLLBACK"); throw error; }
+    let result: T;
+    try { result = body(); this.db.exec("COMMIT"); }
+    catch (error) { this.pendingTraceLines = []; this.db.exec("ROLLBACK"); throw error; }
+    const entries = this.pendingTraceLines;
+    this.pendingTraceLines = [];
+    try {
+      if (entries.length) mkdirSync(join(dirname(this.path), "run-traces"), { recursive: true, mode: 0o700 });
+      for (const entry of entries) appendFileSync(join(dirname(this.path), "run-traces", `${entry.runId}.jsonl`), entry.line, { mode: 0o600 });
+    } catch { console.error("实时 Trace 写入失败；原始记录仍在 SQLite。"); }
+    return result;
   }
 }

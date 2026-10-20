@@ -276,8 +276,10 @@ def airflow_get_task_log(dag_id: str, dag_run_id: str, task_id: str, try_number:
                          map_index: int | None = None, server: Server = "default",
                          offset: Annotated[int, Field(ge=-1)] = -1,
                          max_chars: Annotated[int, Field(ge=1, le=12000)] = 12000,
-                         export_log: bool = False) -> dict:
-    """分段读取任务日志；默认读末尾，支持导出本地日志供人工核对。
+                         export_log: bool = False,
+                         keyword: Annotated[str | None, Field(min_length=1)] = None,
+                         context_lines: Annotated[int, Field(ge=0, le=100)] = 20) -> dict:
+    """读取日志末尾、指定片段或关键词附近原文，支持导出本地日志。
 
     Args:
         dag_id: DAG ID。
@@ -289,17 +291,41 @@ def airflow_get_task_log(dag_id: str, dag_run_id: str, task_id: str, try_number:
         offset: -1 读取末尾；0 从头读取，之后传 next_offset。
         max_chars: 本次返回字符数，1–12000。
         export_log: 是否把已获取的完整日志保存本地；仅保存，不修改 Airflow。
+        keyword: 可选关键词，不区分大小写的字面匹配；指定后忽略 offset，返回匹配片段及原始行号。未匹配不代表没有错误。
+        context_lines: 关键词匹配行前后各保留多少行，0–100；片段正文合计仍受 max_chars 限制。
     """
     params = {"map_index": map_index} if map_index is not None else None
     client = _client(server)
     text = client.get("dags", dag_id, "dagRuns", dag_run_id, "taskInstances", task_id, "logs", try_number,
                          params=params, accept="text/plain").text
-    start = max(0, len(text) - max_chars) if offset == -1 else offset
-    end = min(len(text), start + max_chars)
-    result = {"log": text[start:end], "truncated": start > 0 or end < len(text),
-              "try_number": try_number, "map_index": map_index, "server": server,
-              "offset": start, "next_offset": end if end < len(text) else None, "total_chars": len(text),
+    result = {"try_number": try_number, "map_index": map_index, "server": server,
+              "total_chars": len(text),
               "source": f"{client.base_url}/dags/{quote(dag_id, safe='')}/dagRuns/{quote(dag_run_id, safe='')}/taskInstances/{quote(task_id, safe='')}/logs/{try_number}"}
+    if keyword is None:
+        start = max(0, len(text) - max_chars) if offset == -1 else offset
+        end = min(len(text), start + max_chars)
+        result.update(log=text[start:end], truncated=start > 0 or end < len(text),
+                      offset=start, next_offset=end if end < len(text) else None)
+    else:
+        lines = text.splitlines(keepends=True)
+        hits = [i for i, line in enumerate(lines) if keyword.casefold() in line.casefold()]
+        ranges = []
+        for i in hits:
+            start, end = max(0, i - context_lines), min(len(lines), i + context_lines + 1)
+            if ranges and start <= ranges[-1][1]:
+                ranges[-1][1] = max(ranges[-1][1], end)
+            else:
+                ranges.append([start, end])
+        snippets, remaining = [], max_chars
+        truncated = False
+        for start, end in ranges:
+            excerpt = "".join(lines[start:end])
+            chunk = excerpt[:remaining]
+            truncated = truncated or len(chunk) < len(excerpt)
+            if chunk:
+                snippets.append({"start_line": start + 1, "end_line": start + len(chunk.splitlines()), "log": chunk})
+            remaining -= len(chunk)
+        result.update(keyword=keyword, matched_lines=len(hits), snippets=snippets, truncated=truncated)
     if export_log:
         if len(text.encode()) > 2_000_000:
             raise ToolException("日志超过 2 MB，本次不导出；请缩小日志范围。")

@@ -1,0 +1,117 @@
+{
+  "id": "W01",
+  "family": "empty_result_symptom",
+  "question": "检查 yara 在 automation 服务器上 2026-10-10 到 2026-10-15 的失败任务，挑一个排查原因并给出报告。",
+  "airflow": {
+    "dags": [
+      {
+        "dag_id": "dday_get_current_budget",
+        "owners": [
+          "yara"
+        ],
+        "fileloc": "/home/toc/SSE/airflow/dags/dday_get_current_budget_dag.py",
+        "is_paused": false
+      },
+      {
+        "dag_id": "other_team_report",
+        "owners": [
+          "someone"
+        ],
+        "is_paused": false
+      }
+    ],
+    "task_instances": [
+      {
+        "dag_id": "dday_get_current_budget",
+        "dag_run_id": "manual__2026-10-14T01:44:04+00:00",
+        "task_id": "dday_get_current_budget",
+        "state": "failed",
+        "try_number": 1,
+        "map_index": -1,
+        "start_date": "2026-10-14T01:44:09+00:00",
+        "end_date": "2026-10-14T01:44:09+00:00",
+        "execution_date": "2026-10-14T01:44:09+00:00",
+        "duration": 4.1
+      }
+    ],
+    "logs": {
+      "dday_get_current_budget/manual__2026-10-14T01:44:04+00:00/dday_get_current_budget/1": "[2026-10-14T09:44:09.979+0800] {logging_mixin.py:190} INFO - 输入的region是：TH\n[2026-10-14T09:44:10.005+0800] {sdk.py:177} INFO - execute OLAP query. apiAbbr: cnfashionbi_scs.get_current_budget, version: v_demo1\n[2026-10-14T09:44:13.126+0800] {logging_mixin.py:190} INFO - sql datas: 0\n[2026-10-14T09:44:13.130+0800] {taskinstance.py:3311} ERROR - Task failed with exception\nTraceback (most recent call last):\n  File \"/home/toc/SSE/airflow/dags/dday_get_current_budget_dag.py\", line 31, in receive_param\n    DayRecoveryBudget().main(task_config)\n  File \"/home/toc/SSE/yara/ads/dday_get_current_budget.py\", line 178, in main\n    df = df[df['region'] == region]\n  File \"/home/toc/SSE/.local/lib/python3.8/site-packages/pandas/core/frame.py\", line 3761, in __getitem__\n    indexer = self.columns.get_loc(key)\n  File \"/home/toc/SSE/.local/lib/python3.8/site-packages/pandas/core/indexes/range.py\", line 349, in get_loc\n    raise KeyError(key)\nKeyError: 'region'\n[2026-10-14T09:44:13.137+0800] {taskinstance.py:1225} INFO - Marking task as FAILED.\n"
+    }
+  },
+  "sources": {
+    "/home/toc/SSE/yara/ads/dday_get_current_budget.py": "import pandas as pd\nfrom dataservice import generate_data\n# step 3\n# step 4\n# step 5\n# step 6\n# step 7\n# step 8\n# step 9\n# step 10\n# step 11\n# step 12\n# step 13\n# step 14\n# step 15\n# step 16\n# step 17\n# step 18\n# step 19\n# step 20\n# step 21\n# step 22\n# step 23\n# step 24\n# step 25\n# step 26\n# step 27\n# step 28\n# step 29\n# step 30\n# step 31\n# step 32\n# step 33\n# step 34\n# step 35\n# step 36\n# step 37\n# step 38\n# step 39\n# step 40\n# step 41\n# step 42\n# step 43\n# step 44\n# step 45\n# step 46\n# step 47\n# step 48\n# step 49\n# step 50\n# step 51\n# step 52\n# step 53\n# step 54\n# step 55\n# step 56\n# step 57\n# step 58\n# step 59\n# step 60\n# step 61\n# step 62\n# step 63\n# step 64\n# step 65\n# step 66\n# step 67\n# step 68\n# step 69\n# step 70\n# step 71\n# step 72\n# step 73\n# step 74\n# step 75\n# step 76\n# step 77\n# step 78\n# step 79\n# step 80\n# step 81\n# step 82\n# step 83\n# step 84\n# step 85\n# step 86\n# step 87\n# step 88\n# step 89\n# step 90\n# step 91\n# step 92\n# step 93\n# step 94\n# step 95\n# step 96\n# step 97\n# step 98\n# step 99\nclass DayRecoveryBudget:\n# step 101\n# step 102\n# step 103\n# step 104\n# step 105\n# step 106\n# step 107\n# step 108\n# step 109\n    def main(self, task_config):\n        region = task_config['region']\n        shop_id = task_config.get('shop_id')\n# step 113\n# step 114\n        result = generate_data(SERVICE, CREDENTIAL, 'cnfashionbi_scs.get_current_budget', 'v_demo1', {})\n        df = pd.DataFrame(result['data'])\n        print(f'sql datas: {len(df)}')\n# step 118\n# step 119\n# step 120\n# step 121\n# step 122\n# step 123\n# step 124\n# step 125\n# step 126\n# step 127\n# step 128\n# step 129\n# step 130\n# step 131\n# step 132\n# step 133\n# step 134\n# step 135\n# step 136\n# step 137\n# step 138\n# step 139\n# step 140\n# step 141\n# step 142\n# step 143\n# step 144\n# step 145\n# step 146\n# step 147\n# step 148\n# step 149\n# step 150\n# step 151\n# step 152\n# step 153\n# step 154\n# step 155\n# step 156\n# step 157\n# step 158\n# step 159\n# step 160\n# step 161\n# step 162\n# step 163\n# step 164\n# step 165\n# step 166\n# step 167\n# step 168\n# step 169\n# step 170\n# step 171\n# step 172\n# step 173\n# step 174\n# step 175\n# step 176\n# step 177\n        df = df[df['shop_id'] == shop_id]\n# step 179\n        df = df[df['region'] == region]\n# step 181\n# step 182\n# step 183\n# step 184\n# step 185\n# step 186\n# step 187\n# step 188\n# step 189\n# step 190\n"
+  },
+  "data_apis": {
+    "cnfashionbi_scs.get_current_budget@v_demo1": {
+      "status": "ONLINE",
+      "code": "-- 旧口径：grass_date = (select max(grass_date) from cnfashionbi_scs.ads_budget_snapshot)\nselect region, shop_id, current_budget\nfrom cnfashionbi_scs.ads_budget_snapshot\nwhere grass_date = date_add('day', -1, current_date)"
+    }
+  },
+  "di_queries": [
+    {
+      "match": [
+        "ads_budget_snapshot",
+        "max\\s*\\(\\s*grass_date"
+      ],
+      "columns": [
+        "max_grass_date"
+      ],
+      "rows": [
+        [
+          "2026-10-12"
+        ]
+      ]
+    },
+    {
+      "match": [
+        "ads_budget_snapshot",
+        "group by"
+      ],
+      "columns": [
+        "grass_date",
+        "rows"
+      ],
+      "rows": [
+        [
+          "2026-10-12",
+          5321
+        ],
+        [
+          "2026-10-11",
+          5290
+        ],
+        [
+          "2026-10-10",
+          5302
+        ]
+      ]
+    },
+    {
+      "match": [
+        "ads_budget_snapshot",
+        "count"
+      ],
+      "columns": [
+        "rows"
+      ],
+      "rows": [
+        [
+          0
+        ]
+      ]
+    }
+  ],
+  "gold": {
+    "expected_outcome": "answered",
+    "required_facts": [
+      "Data API 查询返回 0 行（日志 sql datas: 0），空 DataFrame 没有 region 列，KeyError 是这个空结果的表现而不是独立根因。",
+      "Data API 的 SQL 只取 date_add('day', -1, current_date) 即 D-1 分区。",
+      "本地源码第 178 行与 traceback 中的第 178 行不一致，本地版本与运行时版本不同。"
+    ],
+    "forbidden_claims": [
+      "源表或 Data API 结构里缺少 region 字段",
+      "已经修改了 SQL、源码或重跑了任务",
+      "本地源码就是线上运行的版本"
+    ]
+  }
+}

@@ -1,3 +1,4 @@
+import { TOOL_LIMITS } from "./tool-policy.js";
 import type { AgentRegistry } from "./agents.js";
 import { WebSocket } from "ws";
 import { parseRequest, type GatewayEvent, type GatewayResponse } from "./protocol.js";
@@ -56,7 +57,7 @@ export class Gateway {
           connected = true;
           clearTimeout(handshakeTimer);
           this.clients.add(socket);
-          this.respond(socket, id, { protocolVersion: 1, runtime: this.runtime.info, capabilities: this.tools?.catalog ?? [] });
+          this.respond(socket, id, { protocolVersion: 1, runtime: this.runtime.info, capabilities: this.tools?.catalog ?? [], toolLimits: TOOL_LIMITS });
           return;
         }
         if (!connected) throw new AppError("NOT_CONNECTED", "请先发送 connect。");
@@ -136,7 +137,7 @@ export class Gateway {
       case "chat.send": {
         const sessionId = this.string(params.sessionId, "sessionId", 128);
         const clientRequestId = this.string(params.clientRequestId, "clientRequestId", 128);
-        const content = this.string(params.content, "content", 32_000);
+        const content = this.string(params.content, "content", 64_000);
         this.store.get(sessionId);
         if (!this.store.findRequest(sessionId, clientRequestId)) this.sessionLimits.take(sessionId);
         return { run: this.coordinator.accept(sessionId, clientRequestId, content) };
@@ -144,7 +145,7 @@ export class Gateway {
       case "chat.steer": {
         const runId = this.string(params.runId, "runId", 128);
         const clientRequestId = this.string(params.clientRequestId, "clientRequestId", 128);
-        const content = this.string(params.content, "content", 32_000);
+        const content = this.string(params.content, "content", 64_000);
         const current = this.store.getRun(runId);
         if (!JSON.parse(current.steerTrace).some((entry: { clientRequestId: string }) => entry.clientRequestId === clientRequestId)) {
           this.sessionLimits.take(current.sessionId);

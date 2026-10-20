@@ -10,7 +10,8 @@ def catalog():
         meta = tool.metadata or {}
         entries.append({"definition": convert_to_openai_tool(tool), "risk": meta.get("risk", "execute"),
                         "skills": meta.get("skills", []), "label": meta.get("label", ""),
-                        "autoApprove": meta.get("auto_approve", False)})
+                        "autoApprove": meta.get("auto_approve", False),
+                        "budgetGroup": meta.get("budget_group", "query")})
     return entries
 
 

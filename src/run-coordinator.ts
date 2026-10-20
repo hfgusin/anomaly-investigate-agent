@@ -6,9 +6,10 @@ import type { AgentRuntime } from "./runtime.js";
 import type { ToolRegistry, ToolResult } from "./tools/read-file.js";
 import { validateMemoryEvidence } from "./memory-validation.js";
 import type { SkillRegistry } from "./skills.js";
+import type { IntentRouter } from "./intent-router.js";
 import { validateResearchCitations } from "./research-validation.js";
 import type { ResearchSession } from "./tools/research-session.js";
-import { hasSideEffect, isAutoApproved } from "./tool-policy.js";
+import { hasSideEffect, isAutoApproved, toolBudgetGroup, TOOL_LIMITS } from "./tool-policy.js";
 
 export class RunCoordinator {
   private readonly queues = new Map<string, Promise<void>>();
@@ -20,6 +21,7 @@ export class RunCoordinator {
   private readonly childExecutions = new Set<Promise<void>>();
   private readonly activeAgents = new Map<string, number>();
   private readonly resultListeners = new Set<() => void>();
+  private router?: IntentRouter;
 
   constructor(
     private readonly store: SessionStore,
@@ -48,6 +50,10 @@ export class RunCoordinator {
     this.publish(run);
     this.enqueue(run);
     return run;
+  }
+
+  setRouter(router: IntentRouter): void {
+    this.router = router;
   }
 
   resumeQueuedResearchRuns(): number {
@@ -235,13 +241,26 @@ export class RunCoordinator {
           const growth = this.store.get(this.store.getRun(runId).sessionId).topicId === "growth";
           const growthToolNames = growth && this.tools ? this.tools.definitionsFor("growth").map((definition) =>
             definition.function.name) : [];
+          const input = this.store.getRun(runId).input;
+          // 只给没写斜杠命令的首次执行路由；Skill 选定后由快照固定，恢复和插话不再重新路由。
+          const routingHistory = this.router ? this.store.history(initial.sessionId).runs
+            .filter(run => run.position < initial.position && run.status === "completed").slice(-2)
+            .flatMap(run => [{ role: "user" as const, content: run.input.slice(-500) },
+              { role: "assistant" as const, content: run.output.slice(-500) }]) : [];
+          const route = this.router && !growth && !profile && this.store.getRun(runId).skillSnapshot === null && !input.trim().startsWith("/")
+            ? await this.router(input, routingHistory).catch(() => undefined) : undefined;
+          if (route) this.publish(this.store.recordProviderEvent(runId, "intent.route", { ...route }));
+          const routed = route && ["daily-check", "ads-check", "source-lookup"].includes(route.route) ? `/${route.route} ${input}` : input;
           const skill = this.store.selectRunSkill(runId, () => growth
-            ? this.skills?.select(`/growth ${this.store.getRun(runId).input}`)
-            : !profile || profile.research ? this.skills?.select(this.store.getRun(runId).input) : undefined);
+            ? this.skills?.select(`/growth ${input}`)
+            : !profile || profile.research ? this.skills?.select(routed) : undefined);
           if (profile?.research && !skill) throw new AppError("RESEARCH_UNAVAILABLE", "研究子 Agent 缺少研究 Skill。");
           const acceptedDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(new Date(this.store.getRun(runId).acceptedAt));
           const skillInstruction = [profile?.instructions, skill?.instructions,
-            growth ? growthRuntimeContext(acceptedDate) : undefined].filter(Boolean).join("\n\n");
+            growth ? growthRuntimeContext(acceptedDate) : undefined,
+            route?.route === "clarify" ? `用户意图不明确。不要调用工具，直接问用户：${route.question || "你想排查哪个任务、哪一天？"}` : undefined,
+            route?.route === "out-of-scope" ? "请求超出当前业务工具范围。明确说明尚不支持该操作，不调用工具、不声称已执行。" : undefined,
+          ].filter(Boolean).join("\n\n");
           const researchSession = skill?.id === "multi-hop-research-v2"
             ? this.tools?.createResearchSession(this.store.getRun(runId).input.replace(/^\/research2\s+/u, "")) : undefined;
           if (skill?.id === "multi-hop-research-v2" && !researchSession) {
@@ -254,6 +273,7 @@ export class RunCoordinator {
           }
           let definitions: unknown[] | undefined = researchSession?.definitions ?? (this.tools && (typeof this.tools.definitionsFor === "function"
             ? this.tools.definitionsFor(skill?.id) : this.tools.definitions));
+          if (route?.route === "clarify" || route?.route === "out-of-scope") definitions = [];
           if (profile) {
             definitions = profile.id === "main" ? [DELEGATE_TOOL] : (definitions ?? []).filter((definition) =>
               profile.tools.includes((definition as { function: { name: string } }).function.name));
@@ -273,7 +293,7 @@ export class RunCoordinator {
             (definition as { function: { name: string } }).function.name) : undefined;
           const systemAndToolDefinitionChars = this.runtime.promptOverheadChars?.(definitions, skillInstruction || undefined) ?? 0;
           const outputReserveChars = Math.min(2048, Math.floor(this.contextBudgetChars / 4));
-          const toolResultReserveChars = definitions?.length || recovered ? Math.min(32768, Math.floor(this.contextBudgetChars / 4)) : 0;
+          let toolResultReserveChars = definitions?.length || recovered ? Math.min(32768, Math.floor(this.contextBudgetChars / 4)) : 0;
           const messageBudget = this.contextBudgetChars - systemAndToolDefinitionChars - outputReserveChars - toolResultReserveChars;
           if (messageBudget < 1) throw new AppError("CONTEXT_TOO_LARGE", "系统提示和预留空间已占满上下文预算。");
           let context = this.store.contextFor(runId, messageBudget);
@@ -284,6 +304,8 @@ export class RunCoordinator {
             context = this.store.contextFor(runId, messageBudget);
           }
           const { messages } = context;
+          // History keeps its initial allowance; unused space becomes available to tools.
+          if (toolResultReserveChars) toolResultReserveChars += messageBudget - context.trace.usedChars;
           let recoveryEvidenceChars = 0;
           if (recovered) {
             const calls = JSON.parse(this.store.getRun(runId).toolTrace) as ToolTrace[];
@@ -311,6 +333,14 @@ export class RunCoordinator {
           let researchResult: string | undefined;
           const callTool = this.tools || profile ? async (call: { id: string; name: string; arguments: string }, executePython?: (argumentsJson: string) => Promise<ToolResult>): Promise<ToolResult> => {
             controller.signal.throwIfAborted();
+            const group = toolBudgetGroup(call.name);
+            const calls = JSON.parse(this.store.getRun(runId).toolTrace) as ToolTrace[];
+            const used = calls.filter(t => (t.budgetGroup ?? toolBudgetGroup(t.name)) === group).length;
+            if (used >= TOOL_LIMITS[group]) {
+              const reason = `${group === "record" ? "留底" : "普通工具"}已使用 ${used}/${TOOL_LIMITS[group]} 次；本次未执行，请根据已有证据收尾。`;
+              this.publish(this.store.recordProviderEvent(runId, "tool.limit_reached", { ...call, group, used, limit: TOOL_LIMITS[group], reason }));
+              return { content: reason, isError: true };
+            }
             if (growth && growthToolNames.includes(call.name)) {
               try {
                 const args = JSON.parse(call.arguments);
@@ -346,10 +376,10 @@ export class RunCoordinator {
             return result;
           } : undefined;
           for await (const delta of this.runtime.stream({ runId, messages, signal: controller.signal,
-            ...(growth ? { hostedSearch: false } : {}),
+            ...(growth || route?.route === "clarify" || route?.route === "out-of-scope" ? { hostedSearch: false } : {}),
             maxToolResultChars: toolResultReserveChars - recoveryEvidenceChars,
             ...(skillInstruction ? { skillInstruction } : {}),
-            ...(researchSession || profile || growth || skill?.id === "daily-check" ? { toolResultMode: "standard" as const } : {}),
+            ...(researchSession || profile || growth || skill?.id === "daily-check" || skill?.id === "source-lookup" ? { toolResultMode: "standard" as const } : {}),
             ...(callTool && registeredDefinitions ? { callTool, toolDefinitions: registeredDefinitions,
               ...(activeToolNames ? { activeToolNames } : {}) } : {}) })) {
             controller.signal.throwIfAborted();

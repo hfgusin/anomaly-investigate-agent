@@ -226,6 +226,7 @@ node_modules/
 __pycache__/
 dist/
 .data/
+.langgraph_api/
 .env
 .env.*
 !.env.example
@@ -235,3 +236,5 @@ dist/
 .DS_Store
 # 本地服务账号私钥，不进入版本控制。
 /gsheet_email.json
+# 本机真实业务来源映射，不进入作品仓库。
+/script_and_data_info_record.md

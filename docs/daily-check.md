@@ -6,6 +6,14 @@
 
 ### 工具参数和失败留底
 
+运行中可在「任务详情 → 步骤时间线」依次查看模型行动说明、请求工具及参数、实际返回结果。模型会被要求用一两句中文说明已有证据、缺口和下次查询目的；这只是公开的简短说明，不是内部思考，也不保证模型每次都遵循。未提供说明时页面明确标注。模型对某次结果的解释可能出现在后续行动说明或最终回答中，不把它强行对应到单个工具结果。
+
+每个步骤提交 SQLite 后立即追加到 `.data/run-traces/<runId>.jsonl`，不必等任务结束。一行一个 JSON，包含事件、工具参数/返回、累计结果字符数及预算；终态包含最终回答或错误。可以用 `tail -f .data/run-traces/<runId>.jsonl` 实时查看。文件沿用凭据过滤及 600 权限，仍包含内部业务资料，不提交 Git；Python stdout 协议不变。写文件失败不会改变任务结果，原记录仍保存在 SQLite。
+
+上下文分配：先按原预算保留最近历史对话，再把历史区未使用的字符额度分给本轮工具结果；`contextTrace.toolResultReserveChars` 记录调整后的额度。恢复任务会从该额度继续扣除已有证据。总预算仍由 `CONTEXT_BUDGET_CHARS` 控制，单位是字符，不是 token；本次没有加入工具消息自动摘要。
+
+日志定位：`airflow_get_task_log` 可传 `keyword="Traceback"`、`context_lines=5`，按不区分大小写的字面匹配返回 `matched_lines` 和 `snippets`；每个片段带 `start_line`、`end_line`（从 1 开始）及原文 `log`。重叠或相邻片段合并，正文合计不超过 `max_chars`，超出时 `truncated=true`，最后一行可能不完整。未匹配返回空片段，不代表任务没有错误。关键词模式忽略 `offset`；不传关键词时保留末尾读取与字符分页。仍然从 Airflow 获取日志后在本地筛选，减少的是模型输入，不是网络下载量。
+
 点回答下方的「任务详情」→「工具参数与结果」，可查看每次调用的 ID、参数（包括原 SQL）、开始/结束时间和返回结果。运行中、失败或中断的调用默认展开。「下载执行 Trace JSON」会导出本次输入、输出、工具调用、步骤事件、上下文统计、Skill 快照及恢复记录；行动说明是模型公开生成的说明，不是内部思考。
 
 任务结束后自动保存到数据目录的 `run-traces/<runId>.json`（默认 `.data/run-traces/`）。Gateway 重启标记中断时也会保存。SQLite 是原始记录，JSON 写盘失败会记录错误，不改变任务结果；旧任务仍可从页面下载。文件权限为 600，过滤常见凭据字段与当前环境中配置的密钥，但仍包含内部 SQL 和业务日志，`.data/` 不提交 Git。
@@ -31,6 +39,14 @@
 ```
 
 只读工具（Airflow、Data API 元数据、本地源码）自动批准；`di_query_sql` 和 `record_automation_check` 仍需网页批准。网页显示行动说明、参数、实际结果；行动说明是模型生成的简短理由，不是模型内部思考，也不代表操作已经执行。
+
+### 不写斜杠命令（意图路由）
+
+`.env` 设置 `MIRROR_ROUTER=true` 后，没写斜杠命令的输入会先交给小模型（`ROUTER_MODEL_NAME`，默认 doubao-seed-2-0-mini，关闭思考，约 1 秒）分类：`daily-check`、`ads-check` 选中对应 Skill；`general` 走通用模式；`clarify` 让 Agent 只问一句澄清问题、不调用工具。分类结果记在任务详情的 `intent.route` 事件里。路由失败或超时按通用模式继续。Skill 选定后写入快照，恢复和插话不再重新路由。few-shot 示例在 `config/router-examples.json`，由大模型标注、人工复核；对比结果见 `portfolio/evaluation/results/router.md`。
+
+### 离线演示与评测
+
+设置 `MIRROR_DEMO_WORLD=<world 文件绝对路径>` 后，Airflow、源码映射、Data API、DI、GSheet 都换成虚构数据，不需要公司网络。world 文件和评测方法见 `portfolio/evaluation/README.md`。
 
 ## 调用链
 
@@ -161,3 +177,11 @@ node --test tests/daily-check.test.mjs tests/langchain.test.mjs tests/python-too
 - 本次记录为待确认，明确未执行数据 SQL、未完成根因验证；不冒充完整 Agent 诊断。
 
 Airflow 扫描接口参考固定 2.10.5 的 [REST API 定义](https://github.com/apache/airflow/blob/2.10.5/airflow/api_connexion/openapi/v1.yaml)，实际部署兼容性仍以真实读取验证为准。
+
+## 数据来源与收尾
+
+缺列错误先追溯报错变量的赋值，再选择 GSheet、Data API 或文件验证。read_project_source 支持 keyword/context_lines 定位，私钥字符串脱敏后保留原始行号；无法安全脱敏时拒绝返回。read_gsheet_rows 只读最多 20 行，返回原始行与读取时间；当前表头不是历史快照。
+
+config/tool-limits.json 是额度唯一配置：普通工具 16 次，留底 2 次（含重试），14 次提醒收尾。失败、拒绝也占额度。临近模型轮次上限会先关闭查询，保留留底及最终回答轮次。超额调用不执行，tool.limit_reached 保存参数、次数与原因到 Trace；写入仍需网页审批。
+
+2026-10-14 真实只读验证：来源表的“自动化规则-TH-留底” tab 可访问，A1:G2 返回一行表头，包含“操作时间”。这是当前快照，不代表旧任务的实际站点或历史表头。尚未复跑真实模型诊断。

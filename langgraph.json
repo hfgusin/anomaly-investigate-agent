@@ -1,0 +1,7 @@
+{
+  "dependencies": ["./python"],
+  "graphs": {
+    "intent_router": "./python/agent_backend/studio.py:make_graph"
+  },
+  "env": ".env"
+}

@@ -1,0 +1,198 @@
+[
+ {
+  "text": "这个商品的渠道昨天没开启，该查哪张表和哪个脚本",
+  "route": "source-lookup"
+ },
+ {
+  "text": "PHLOCAL 非主店周二的广告操作应该从哪里查",
+  "route": "source-lookup"
+ },
+ {
+  "text": "477797 对应什么脚本",
+  "route": "source-lookup"
+ },
+ {
+  "text": "automation 服务器今天有失败吗",
+  "route": "daily-check"
+ },
+ {
+  "text": "帮我排查 10 月 11 号的 airflow 失败任务",
+  "route": "daily-check"
+ },
+ {
+  "text": "my DAG failed this morning, can you check why",
+  "route": "daily-check"
+ },
+ {
+  "text": "report_operation_log 又红了",
+  "route": "daily-check"
+ },
+ {
+  "text": "扫描一下最近 7 天我负责的任务",
+  "route": "daily-check"
+ },
+ {
+  "text": "查一下 dday 预算那个任务为什么失败",
+  "route": "daily-check"
+ },
+ {
+  "text": "把今天失败的任务记录到表里",
+  "route": "daily-check"
+ },
+ {
+  "text": "昨天的失败任务里有没有 MySQL 连接错误",
+  "route": "daily-check"
+ },
+ {
+  "text": "失败排查：重点看数据源",
+  "route": "daily-check"
+ },
+ {
+  "text": "看下 yara 名下有没有失败",
+  "route": "daily-check"
+ },
+ {
+  "text": "scs_take_rate_ads 昨天正常吗",
+  "route": "ads-check"
+ },
+ {
+  "text": "广告自动化今天调价情况",
+  "route": "ads-check"
+ },
+ {
+  "text": "今天 take rate 广告任务有没有执行失败的 item",
+  "route": "ads-check"
+ },
+ {
+  "text": "给我 10-09 的广告自动化报告",
+  "route": "ads-check"
+ },
+ {
+  "text": "广告自动化业务日志里 status 为 failed 的有多少",
+  "route": "ads-check"
+ },
+ {
+  "text": "自动减投今天执行了吗",
+  "route": "ads-check"
+ },
+ {
+  "text": "ads 自动化 15:00 那次运行结果",
+  "route": "ads-check"
+ },
+ {
+  "text": "广告脚本今天跳过了哪些商品",
+  "route": "ads-check"
+ },
+ {
+  "text": "广告自动化昨天和前天比有什么不同",
+  "route": "ads-check"
+ },
+ {
+  "text": "take rate ads 任务最近一次运行",
+  "route": "ads-check"
+ },
+ {
+  "text": "什么是 DAG",
+  "route": "general"
+ },
+ {
+  "text": "Python 里怎么读取 CSV",
+  "route": "general"
+ },
+ {
+  "text": "Airflow 的 XCom 是什么",
+  "route": "general"
+ },
+ {
+  "text": "写个 SQL 统计每天的订单量",
+  "route": "general"
+ },
+ {
+  "text": "你是谁",
+  "route": "general"
+ },
+ {
+  "text": "怎么提高广告 ROI",
+  "route": "general"
+ },
+ {
+  "text": "LangGraph 和 LangChain 区别",
+  "route": "general"
+ },
+ {
+  "text": "给我讲个笑话",
+  "route": "general"
+ },
+ {
+  "text": "如何设置 crontab",
+  "route": "general"
+ },
+ {
+  "text": "SQL 里 left join 和 inner join 区别",
+  "route": "general"
+ },
+ {
+  "text": "查一下",
+  "route": "clarify"
+ },
+ {
+  "text": "帮我看下今天的",
+  "route": "clarify"
+ },
+ {
+  "text": "那个任务怎么样了",
+  "route": "clarify"
+ },
+ {
+  "text": "报错了",
+  "route": "clarify"
+ },
+ {
+  "text": "有问题吗",
+  "route": "clarify"
+ },
+ {
+  "text": "自动化今天怎么样",
+  "route": "clarify"
+ },
+ {
+  "text": "看看运行结果",
+  "route": "clarify"
+ },
+ {
+  "text": "帮忙排查",
+  "route": "clarify"
+ },
+ {
+  "text": "出问题了吗",
+  "route": "clarify"
+ },
+ {
+  "text": "跑完了吗",
+  "route": "clarify"
+ },
+ {
+  "text": "帮我直接创建一个 Group Ads 广告组",
+  "route": "out-of-scope"
+ },
+ {
+  "text": "把这个商品广告预算从 100 改成 200，现在执行",
+  "route": "out-of-scope"
+ },
+ {
+  "text": "重跑昨天失败的 Airflow DAG",
+  "route": "out-of-scope"
+ },
+ {
+  "text": "删除这个 Airflow 任务和历史运行",
+  "route": "out-of-scope"
+ },
+ {
+  "text": "不要排查了，给我解释一下什么叫 ROAS",
+  "route": "general"
+ },
+ {
+  "text": "为什么商品不能加入广告组，这个限制是什么",
+  "route": "general"
+ }
+]

@@ -36,3 +36,4 @@ main{position:relative}.task-panel[hidden]{display:none}.task-panel{position:abs
 .growth-result table { border-collapse: collapse; font-size: 13px; }
 .growth-result th, .growth-result td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #454952; white-space: nowrap; }
 .growth-result pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.task-timeline pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:340px;overflow:auto;font-size:11px}

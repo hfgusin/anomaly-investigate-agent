@@ -17,7 +17,7 @@ from langchain_core.language_models.fake_chat_models import FakeMessagesListChat
 from langchain_core.messages import AIMessage
 from langchain_core.tools import ToolException, tool
 from agent_backend import runtime
-from agent_backend.tools import airflow, airflow_scan, dataservice, project_source, check_records
+from agent_backend.tools import airflow, airflow_scan, dataservice, project_source, check_records, gsheet
 from agent_backend.catalog import catalog
 from debug_agent import DebugGateway
 
@@ -105,6 +105,14 @@ class SourceTests(unittest.TestCase):
         self.assertNotIn("credential-secret", result["code"])
         self.assertNotIn("service-secret", result["code"])
         self.assertIsNone(result["line_match"])
+
+    def test_keyword_follows_sheet_variable_and_redacts_multiline_key(self):
+        (self.root / "a.py").write_text('credentials = {"private_key": """-----BEGIN PRIVATE KEY-----\nsecret-material\n-----END PRIVATE KEY-----"""}\nlog_df = read_gsheet("id", "TH", "A1:G")\nlog_df["操作时间"]\n')
+        result = project_source.read_project_source.invoke({"server_path": "/srv/code/a.py", "keyword": "log_df", "context_lines": 5})
+        self.assertEqual(result["matched_lines"], [4, 5])
+        self.assertIn('4: log_df = read_gsheet', result["code"])
+        self.assertNotIn("secret-material", result["code"])
+        self.assertNotIn("PRIVATE KEY", result["code"])
 
     def test_line_match_detects_version_drift(self):
         (self.root / "a.py").write_text("a = 1\ndf = df[df['shop_id'] == shop_id]\ndf = df[df['region'] == region]\n")
@@ -266,6 +274,30 @@ class RecordTests(unittest.TestCase):
 
 
 class LogTests(unittest.TestCase):
+    def test_keyword_merges_windows_and_keeps_original_line_numbers(self):
+        text = "head\nERROR first\nnearby\nerror second\ntail\nlast\n"
+        client = airflow.AirflowClient("https://fixture", transport=httpx.MockTransport(lambda _: httpx.Response(200, text=text)))
+        with patch.object(airflow, "_client", return_value=client):
+            result = airflow.airflow_get_task_log.invoke({"dag_id": "a", "dag_run_id": "r", "task_id": "t", "try_number": 1,
+                                                         "keyword": "Error", "context_lines": 1})
+        self.assertEqual(result["matched_lines"], 2)
+        self.assertEqual(result["snippets"], [{"start_line": 1, "end_line": 5, "log": "".join(text.splitlines(keepends=True)[:5])}])
+        self.assertFalse(result["truncated"])
+
+    def test_keyword_no_match_and_global_snippet_limit(self):
+        text = "ERROR one\nnoise\nERROR two\n"
+        client = airflow.AirflowClient("https://fixture", transport=httpx.MockTransport(lambda _: httpx.Response(200, text=text)))
+        args = {"dag_id": "a", "dag_run_id": "r", "task_id": "t", "try_number": 1, "context_lines": 0}
+        with patch.object(airflow, "_client", return_value=client):
+            missing = airflow.airflow_get_task_log.invoke({**args, "keyword": "Traceback"})
+            bounded = airflow.airflow_get_task_log.invoke({**args, "keyword": "ERROR", "max_chars": 12})
+        self.assertEqual(missing["matched_lines"], 0)
+        self.assertEqual(missing["snippets"], [])
+        self.assertFalse(missing["truncated"])
+        self.assertEqual(sum(len(s["log"]) for s in bounded["snippets"]), 12)
+        self.assertEqual(bounded["snippets"][1]["start_line"], 3)
+        self.assertTrue(bounded["truncated"])
+
     def test_segment_cursor_and_local_export(self):
         client = airflow.AirflowClient("https://fixture", transport=httpx.MockTransport(lambda _: httpx.Response(200, text="abcdefghij")))
         with patch.object(airflow, "_client", return_value=client):
@@ -347,6 +379,27 @@ class FlowTests(unittest.TestCase):
         self.assertFalse(entries["record_automation_check"]["autoApprove"])
         self.assertTrue(entries["airflow_get_task_log"]["autoApprove"])
         self.assertEqual(entries["greet_user"]["skills"], [])
+
+
+class GSheetReadTests(unittest.TestCase):
+    def read(self, response):
+        with patch.object(gsheet, "gsheet_token", return_value="fixture-token"), patch.object(gsheet.httpx, "get", return_value=response) as request:
+            result = gsheet.read_gsheet_rows.invoke({"spreadsheet_id": "fixture", "tab_name": "TH's log"})
+        self.assertEqual(request.call_args.kwargs["params"]["valueRenderOption"], "FORMATTED_VALUE")
+        self.assertIn("TH%27%27s", request.call_args.args[0])
+        return result
+
+    def test_header_spaces_and_header_only_are_preserved(self):
+        result = self.read(httpx.Response(200, json={"values": [[" 操作时间 ", "item id"]]}))
+        self.assertEqual(result["rows"], [[" 操作时间 ", "item id"]])
+        self.assertFalse(result["empty"])
+        self.assertIn("read_at", result)
+
+    def test_empty_success_and_permission_failure_are_distinct(self):
+        self.assertTrue(self.read(httpx.Response(200, json={}))['empty'])
+        error = self.read(httpx.Response(403, json={"error": "secret-response"}))
+        self.assertIn("HTTP 403", error)
+        self.assertNotIn("secret-response", error)
 
 
 if __name__ == "__main__":

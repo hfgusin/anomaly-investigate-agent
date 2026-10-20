@@ -6,6 +6,9 @@ from langchain.agents.middleware.types import ModelRequest, ModelResponse
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from .ark_model import BackendError
 from .tools import tool_risk, tools_by_name
+from .paths import ROOT
+
+TOOL_LIMITS = json.loads((ROOT / "config/tool-limits.json").read_text())
 
 def validate_model_response(message):
     if message.invalid_tool_calls:
@@ -40,7 +43,7 @@ class GatewayRuntimeMiddleware(AgentMiddleware):
         self.max_model_calls = 13 if request.skillInstruction and request.skillInstruction.startswith("# 每日自动化失败排查") else 9
         self.plain = not responses and request.toolResultMode == "plain"
         self.model_calls = 0
-        self.total_calls = 0
+        self.calls = {"query": 0, "record": 0}
         self.tool_chars = 0
         self.seen_ids = set()
         # ToolNode may schedule independent tool calls concurrently; the bridge is line-oriented.
@@ -92,6 +95,31 @@ class GatewayRuntimeMiddleware(AgentMiddleware):
             request = request.override(tools=[tool for tool in request.tools
                                               if isinstance(tool, dict) or getattr(tool, "name", None) in active])
 
+        registered = tools_by_name()
+        groups = {name: (tool.metadata or {}).get("budget_group", "query")
+                  for name, tool in registered.items()}
+        closing = self.model_calls >= self.max_model_calls - 2
+        final = self.model_calls == self.max_model_calls
+        available_tools = []
+        for tool in request.tools:
+            if final:
+                break
+            if isinstance(tool, dict):
+                if not closing:
+                    available_tools.append(tool)
+                continue
+            group = groups.get(tool.name, "query")
+            if self.calls[group] >= TOOL_LIMITS[group] or (closing and group != "record"):
+                continue
+            available_tools.append(tool)
+        request = request.override(tools=available_tools)
+        notice = f"本轮普通工具 {self.calls['query']}/{TOOL_LIMITS['query']} 次，留底 {self.calls['record']}/{TOOL_LIMITS['record']} 次；失败和拒绝也计数。"
+        if closing or self.calls["query"] >= TOOL_LIMITS["warnAt"]:
+            notice += "请收尾：停止无关查询，报告已确认事实及未验证项，必要时用留底工具保存。"
+        if final:
+            notice += "这是最后一轮，只输出最终报告，不再调用工具。"
+        request = request.override(system_message=SystemMessage(content=request.system_message.text + "\n" + notice))
+
         # Every Agent model node independently acquires the shared Gateway allowance.
         self.send("model_request")
         if (await self.recv()).get("type") != "model_allowed":
@@ -105,8 +133,6 @@ class GatewayRuntimeMiddleware(AgentMiddleware):
         validate_model_response(message)
         if message.tool_calls and self.model_calls == self.max_model_calls:
             raise BackendError("TOOL_ROUND_LIMIT", f"模型连续请求工具超过 {self.max_model_calls - 1} 轮。")
-        if len(message.tool_calls) > 16:
-            raise BackendError("PROVIDER_PROTOCOL_ERROR", "模型工具调用超过限额。")
         return response
 
     async def awrap_tool_call(self, request, handler):
@@ -116,10 +142,10 @@ class GatewayRuntimeMiddleware(AgentMiddleware):
             if (not call.get("id") or call["id"] in self.seen_ids or call["name"] not in self.allowed_names
                     or len(arguments.encode("utf-8")) > 8192):
                 raise BackendError("PROVIDER_PROTOCOL_ERROR", "工具名称、编号或参数无效。")
-            if self.responses and self.total_calls >= 16:
-                raise BackendError("PROVIDER_PROTOCOL_ERROR", "模型工具调用超过限额。")
             self.seen_ids.add(call["id"])
-            self.total_calls += 1
+            registered = tools_by_name().get(call["name"])
+            group = (registered.metadata or {}).get("budget_group", "query") if registered else "query"
+            self.calls[group] = min(self.calls[group] + 1, TOOL_LIMITS[group])
             python_tool = call["name"] in tools_by_name()
             self.send("python_tool_call" if python_tool else "tool_call",
                       id=call["id"], name=call["name"], arguments=arguments)

@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "split": "development",
+  "as_of": "2026-10-15",
+  "default_timezone": "Asia/Shanghai",
+  "cases": [
+    {
+      "id": "D01",
+      "family": "source_attribution",
+      "question": "为什么任务出现 KeyError: 操作时间？",
+      "evidence": [
+        {
+          "id": "D01-E1",
+          "kind": "log",
+          "text": "KeyError: 操作时间; report.py:12 log_df[\"操作时间\"]"
+        },
+        {
+          "id": "D01-E2",
+          "kind": "source",
+          "path": "/demo/report.py",
+          "text": "10: log_df = read_gsheet(\"demo_sheet\", \"TH\", \"A1:G\")\n12: log_df[\"操作时间\"]"
+        },
+        {
+          "id": "D01-E3",
+          "kind": "sheet_snapshot",
+          "tab": "TH",
+          "read_at": "2026-10-15T09:00:00+08:00",
+          "rows": [
+            [
+              "操作日期",
+              "item id"
+            ],
+            [
+              "2026-10-15",
+              "9001"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D02",
+      "family": "multiple_failures",
+      "question": "任务为什么失败，是业务代码还是数据库？",
+      "evidence": [
+        {
+          "id": "D02-E1",
+          "kind": "log",
+          "text": "10:00:00 business.py:12 KeyError: 操作时间\n10:00:01 Command exited with return code 0\n10:00:02 Task failed with exception\n_execute_task -> xcom_push -> OperationalError: database network unreachable"
+        }
+      ]
+    },
+    {
+      "id": "D03",
+      "family": "source_attribution",
+      "question": "SQL 打印 0 行，所以缺操作时间肯定是 SQL 导致的吗？",
+      "evidence": [
+        {
+          "id": "D03-E1",
+          "kind": "log",
+          "text": "metrics sql rows: 0\nKeyError: 操作时间 in log_df"
+        },
+        {
+          "id": "D03-E2",
+          "kind": "source",
+          "text": "metrics_df = query_metrics()\nlog_df = read_gsheet(\"demo_sheet\", site_tab, \"A1:G\")\nlog_df[\"操作时间\"]"
+        },
+        {
+          "id": "D03-E3",
+          "kind": "runtime_gap",
+          "text": "没有当前 site_tab 的值，也没有历史 GSheet 响应。"
+        }
+      ]
+    },
+    {
+      "id": "I01",
+      "family": "executed_operation",
+      "question": "TH 商品 9001 在 10 月 14 日什么时候减投，哪个脚本？",
+      "evidence": [
+        {
+          "id": "I01-E1",
+          "kind": "operation_receipt",
+          "row": {
+            "item_id": "9001",
+            "site": "TH",
+            "event_id": "evt-demo-1",
+            "operation_time": "2026-10-14T14:05:00+08:00",
+            "action": "reduce_budget",
+            "before": 100,
+            "after": 80,
+            "result": "success",
+            "request_id": "req-demo-1",
+            "script": "/demo/reduce_ads.py",
+            "run_id": "demo-run-1"
+          }
+        }
+      ]
+    },
+    {
+      "id": "I02",
+      "family": "simulation",
+      "question": "TH 商品 9001 的加投成功了吗？",
+      "evidence": [
+        {
+          "id": "I02-E1",
+          "kind": "decision_log",
+          "row": {
+            "item_id": "9001",
+            "site": "TH",
+            "time": "2026-10-14T16:00:00+08:00",
+            "action": "increase_budget",
+            "before": 80,
+            "after": 100,
+            "result": "fake success",
+            "dry_run": true
+          }
+        },
+        {
+          "id": "I02-E2",
+          "kind": "source",
+          "text": "if dry_run: return \"fake success\"; no HTTP request occurs in this branch"
+        }
+      ]
+    },
+    {
+      "id": "I03",
+      "family": "rejected_operation",
+      "question": "TH 商品 9001 暂停了吗？",
+      "evidence": [
+        {
+          "id": "I03-E1",
+          "kind": "operation_receipt",
+          "row": {
+            "item_id": "9001",
+            "site": "TH",
+            "time": "2026-10-14T16:30:00+08:00",
+            "action": "pause",
+            "http_status": 400,
+            "error": "campaign_not_found",
+            "result": "rejected"
+          }
+        }
+      ]
+    },
+    {
+      "id": "I04",
+      "family": "ambiguous_site",
+      "question": "商品 9001 最近做了什么？",
+      "evidence": [
+        {
+          "id": "I04-E1",
+          "kind": "query_result",
+          "status": "success",
+          "rows": [
+            {
+              "item_id": "9001",
+              "site": "TH",
+              "time": "2026-10-14T14:00:00+08:00",
+              "action": "reduce_budget"
+            },
+            {
+              "item_id": "9001",
+              "site": "MY",
+              "time": "2026-10-14T15:00:00+08:00",
+              "action": "pause"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "I05",
+      "family": "time_zone",
+      "question": "按上海时间看，TH 商品 9001 的减投是不是 10 月 15 日？",
+      "evidence": [
+        {
+          "id": "I05-E1",
+          "kind": "operation_receipt",
+          "row": {
+            "item_id": "9001",
+            "site": "TH",
+            "operation_time": "2026-10-14T17:10:00Z",
+            "action": "reduce_budget",
+            "result": "success"
+          }
+        }
+      ]
+    },
+    {
+      "id": "I06",
+      "family": "ingestion_vs_operation",
+      "question": "这是 10 月 15 日执行的操作吗？",
+      "evidence": [
+        {
+          "id": "I06-E1",
+          "kind": "schema",
+          "text": "operation_time 是执行时间；ingestion_timestamp 是入库时间；updated_at 是留底更新时间。"
+        },
+        {
+          "id": "I06-E2",
+          "kind": "operation_row",
+          "row": {
+            "item_id": "9001",
+            "site": "TH",
+            "operation_time": "2026-10-14T23:55:00+08:00",
+            "ingestion_timestamp": "2026-10-15T00:20:00+08:00",
+            "updated_at": "2026-10-15T08:00:00+08:00",
+            "action": "pause"
+          }
+        }
+      ]
+    },
+    {
+      "id": "I07",
+      "family": "empty_scope",
+      "question": "TH 商品 9001 在 10 月 14 日完全没有操作过吧？",
+      "evidence": [
+        {
+          "id": "I07-E1",
+          "kind": "query_result",
+          "status": "success",
+          "source": "demo_ops.budget_log",
+          "site": "TH",
+          "date": "2026-10-14",
+          "item_id": "9001",
+          "rows": []
+        },
+        {
+          "id": "I07-E2",
+          "kind": "coverage",
+          "text": "只查询了预算日志，暂停日志和人工操作记录未接入。"
+        }
+      ]
+    },
+    {
+      "id": "I08",
+      "family": "permission_failure",
+      "question": "商品 9001 昨天没有操作记录吗？",
+      "evidence": [
+        {
+          "id": "I08-E1",
+          "kind": "tool_result",
+          "tool": "query_operations",
+          "is_error": true,
+          "code": "PERMISSION_DENIED",
+          "rows": null,
+          "text": "Permission denied on demo_ops.operation_log"
+        }
+      ]
+    },
+    {
+      "id": "I09",
+      "family": "script_attribution",
+      "question": "9001 的这次操作是哪一个脚本做的？",
+      "evidence": [
+        {
+          "id": "I09-E1",
+          "kind": "operation_row",
+          "row": {
+            "item_id": "9001",
+            "site": "TH",
+            "time": "2026-10-14T14:05:00+08:00",
+            "action": "reduce_budget",
+            "script": null,
+            "request_id": null,
+            "run_id": null
+          }
+        },
+        {
+          "id": "I09-E2",
+          "kind": "candidate_runs",
+          "rows": [
+            {
+              "script": "/demo/script_a.py",
+              "start": "2026-10-14T14:04:00+08:00"
+            },
+            {
+              "script": "/demo/script_b.py",
+              "start": "2026-10-14T14:05:00+08:00"
+            }
+          ]
+        },
+        {
+          "id": "I09-E3",
+          "kind": "coverage",
+          "text": "尚无两个任务的 item ID 或 request ID 日志命中。"
+        }
+      ]
+    }
+  ]
+}

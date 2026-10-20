@@ -7,7 +7,7 @@ const $ = (selector) => document.querySelector(selector);
 const state = {
   socket: null, ready: false, pending: new Map(), sessions: new Map(), runs: new Map(),
   selected: sessionStorage.getItem("mirror.session") ?? localStorage.getItem("mirror.session"), selection: 0, sending: false,
-  cards: new Map(), displayKey: null, retry: null, runtime: null, capabilities: [],
+  cards: new Map(), displayKey: null, retry: null, runtime: null, capabilities: [], toolLimits: null,
   inspectedRunId: null, taskDetails: new Map(),
   verification: null, limits: null, verificationCaseId: null, page: "chat", evaluation: null, evaluationCase: null, evaluationCaseId: null,
 };
@@ -15,12 +15,12 @@ const statusLabels = { queued: "排队中", running: "正在回答", completed: 
 const phaseLabels = { waiting_children: "等待子 Agent", queued: "等待执行", model_running: "模型处理中", awaiting_approval: "等待工具审批",
   tool_approved: "工具已批准", tool_running: "工具执行中", model_resume: "工具结束，模型继续",
   completed: "步骤完成", failed: "步骤失败", cancelled: "步骤已停止", interrupted: "步骤已中断" };
-const eventLabels = { "child.created": "子任务已派发", "children.returned": "子任务结果已回传", "run.accepted": "任务已接收", "run.started": "开始执行", "run.requeued": "重启后重新排队",
+const eventLabels = { "intent.route": "意图路由（含检索样例）", "child.created": "子任务已派发", "children.returned": "子任务结果已回传", "run.accepted": "任务已接收", "run.started": "开始执行", "run.requeued": "重启后重新排队",
   "run.suspended": "服务关闭，等待恢复", "run.interrupted": "运行中断", "run.completed": "任务完成",
   "run.failed": "任务失败", "run.cancelled": "任务已停止", "web.search": "方舟执行联网搜索", "web.sources": "取得网页引用", "tool.requested": "请求工具审批",
   "tool.approved": "工具已批准", "tool.rejected": "工具被拒绝", "tool.approval_resumed": "恢复待审批工具",
   "tool.started": "工具开始执行", "tool.completed": "工具结果已保存", "tool.failed": "工具执行失败",
-  "tool.blocked": "安全策略已阻止", "tool.effect_unknown": "执行结果待核对",
+  "tool.limit_reached": "工具额度已用尽，本次未执行", "tool.blocked": "安全策略已阻止", "tool.effect_unknown": "执行结果待核对",
   "model.context_ready": "模型上下文已准备", "model.repair_recorded": "引用修正已记录",
   "run.steer_requested": "收到引导", "run.steer_restarted": "按引导重新生成" };
 let renderScheduled = false;
@@ -287,6 +287,14 @@ function renderTaskPanel() {
   intro.append(download);
   if (run.error) intro.append(paragraph(run.error, "run-error"));
   const toolDetails = element("div", "");
+  const usedToolChars = view.calls.reduce((sum, call) => sum + (call.result?.length ?? 0), 0);
+  const context = JSON.parse(run.contextTrace || "{}");
+  intro.append(paragraph(`工具结果：${usedToolChars.toLocaleString()} / ${context.toolResultReserveChars?.toLocaleString() ?? "尚未分配"} 字符`));
+  if (state.toolLimits) {
+    const records = view.calls.filter(call => call.budgetGroup === "record").length;
+    intro.append(paragraph(`普通工具：${view.calls.length - records}/${state.toolLimits.query} 次 · 留底：${records}/${state.toolLimits.record} 次（失败和拒绝也计数）`));
+  }
+  intro.append(paragraph(`实时文件：数据目录/run-traces/${run.id}.jsonl`, "task-time"));
   const pretty = value => { try { return JSON.stringify(JSON.parse(value), null, 2); } catch { return value; } };
   for (const call of view.calls) {
     const item = element("details", "eval-trace");
@@ -310,7 +318,22 @@ function renderTaskPanel() {
     const item = document.createElement("li");
     const label = eventLabels[event.type] ?? event.type;
     const tool = event.detail?.name ? ` · ${event.detail.name}` : "";
-    item.append(paragraph(`${label}${tool}`), paragraph(event.createdAt, "task-time")); timeline.append(item);
+    item.append(paragraph(`${label}${tool}`), paragraph(event.createdAt, "task-time"));
+    if (event.type === "intent.route") item.append(element("pre", "", JSON.stringify(event.detail, null, 2)));
+    if (event.type === "agent.action") item.append(paragraph(`模型行动说明（需核对）：${event.detail.text}`));
+    if (event.type === "tool.limit_reached") item.append(paragraph(event.detail.reason), element("pre", "", pretty(event.detail.arguments)));
+    const call = view.calls.find(call => call.id === event.detail?.id);
+    if (call && event.type === "tool.requested") {
+      item.append(element("pre", "", pretty(call.arguments)));
+      const explained = view.events.some(e => e.type === "agent.action" && e.detail?.tool_call_ids?.includes(call.id));
+      if (!explained) item.append(paragraph("模型未提供本次调用的行动说明。", "task-time"));
+    }
+    if (call && ["tool.completed", "tool.failed"].includes(event.type)) {
+      const result = element("details", "eval-trace");
+      result.append(element("summary", "", `工具返回 · ${call.result?.length ?? 0} 字符`), element("pre", "", pretty(call.result)));
+      item.append(result);
+    }
+    timeline.append(item);
   }
   if (!view.events.length) timeline.append(paragraph(details?.loading ? "正在读取步骤…" : "暂无步骤事件"));
   const evidence = document.createElement("div");
@@ -615,7 +638,7 @@ function connect() {
   socket.onopen = async () => {
     try {
       const connected = await request("connect");
-      state.ready = true; state.runtime = connected.runtime; state.capabilities = connected.capabilities ?? [];
+      state.ready = true; state.runtime = connected.runtime; state.capabilities = connected.capabilities ?? []; state.toolLimits = connected.toolLimits;
       $("#connection").textContent = "● 已连接";
       $("#mode-banner").textContent = connected.runtime.kind === "demo"
         ? "演示模式 · 当前只返回回声，不会调用模型。点击左侧「模型配置」接入已有接口。"

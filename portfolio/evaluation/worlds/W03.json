@@ -1,0 +1,50 @@
+{
+  "id": "W03",
+  "family": "multiple_failures",
+  "question": "检查 yara 在 automation 服务器上 2026-10-10 到 2026-10-15 的失败任务，挑一个排查原因并给出报告。",
+  "airflow": {
+    "dags": [
+      {
+        "dag_id": "sync_campaign_status",
+        "owners": [
+          "yara"
+        ],
+        "fileloc": "/home/toc/SSE/airflow/dags/sync_campaign_status_dag.py",
+        "is_paused": false
+      }
+    ],
+    "task_instances": [
+      {
+        "dag_id": "sync_campaign_status",
+        "dag_run_id": "scheduled__2026-10-12T02:00:00+00:00",
+        "task_id": "sync_campaign_status",
+        "state": "failed",
+        "try_number": 1,
+        "map_index": -1,
+        "start_date": "2026-10-13T02:00:03+00:00",
+        "end_date": "2026-10-13T02:00:03+00:00",
+        "execution_date": "2026-10-13T02:00:03+00:00",
+        "duration": 4.1
+      }
+    ],
+    "logs": {
+      "sync_campaign_status/scheduled__2026-10-12T02:00:00+00:00/sync_campaign_status/1": "[2026-10-13T10:00:03.010+0800] {subprocess.py:75} INFO - Running command: ['python', '/home/toc/SSE/yara/ads/sync_campaign_status.py']\n[2026-10-13T10:00:08.441+0800] {subprocess.py:93} INFO - Traceback (most recent call last):\n[2026-10-13T10:00:08.441+0800] {subprocess.py:93} INFO -   File \"/home/toc/SSE/yara/ads/sync_campaign_status.py\", line 55, in <module>\n[2026-10-13T10:00:08.441+0800] {subprocess.py:93} INFO -     active = status_df[\"campaign_status\"]\n[2026-10-13T10:00:08.442+0800] {subprocess.py:93} INFO - KeyError: 'campaign_status'\n[2026-10-13T10:00:08.512+0800] {subprocess.py:97} INFO - Command exited with return code 0\n[2026-10-13T10:00:18.630+0800] {taskinstance.py:3311} ERROR - Task failed with exception\nTraceback (most recent call last):\n  File \"/home/toc/SSE/.local/lib/python3.8/site-packages/airflow/models/taskinstance.py\", line 767, in _execute_task\n    task_instance.xcom_push(key=XCOM_RETURN_KEY, value=xcom_value, session=session)\nsqlalchemy.exc.OperationalError: (MySQLdb.OperationalError) (2003, \"Can't connect to MySQL server on 'airflow-db:3306' (110)\")\n[2026-10-13T10:00:18.640+0800] {taskinstance.py:1225} INFO - Marking task as FAILED.\n"
+    }
+  },
+  "sources": {
+    "/home/toc/SSE/yara/ads/sync_campaign_status.py": "import traceback\nfrom utils import load_campaign_status\n# step 3\n# step 4\n# step 5\n# step 6\n# step 7\n# step 8\n# step 9\n# step 10\n# step 11\n# step 12\n# step 13\n# step 14\n# step 15\n# step 16\n# step 17\n# step 18\n# step 19\n# step 20\n# step 21\n# step 22\n# step 23\n# step 24\n# step 25\n# step 26\n# step 27\n# step 28\n# step 29\n# step 30\n# step 31\n# step 32\n# step 33\n# step 34\n# step 35\n# step 36\n# step 37\n# step 38\n# step 39\n# step 40\n# step 41\n# step 42\n# step 43\n# step 44\n# step 45\n# step 46\n# step 47\n# step 48\n# step 49\ntry:\n# step 51\n    status_df = load_campaign_status()\n# step 53\n# step 54\n    active = status_df[\"campaign_status\"]\n# step 56\n# step 57\n# step 58\n# step 59\n# step 60\n# step 61\n# step 62\n# step 63\n# step 64\n# step 65\nexcept Exception:\n    traceback.print_exc()\n# step 68\n# step 69\n# step 70\n"
+  },
+  "gold": {
+    "expected_outcome": "answered",
+    "required_facts": [
+      "业务脚本出现 KeyError: 'campaign_status'，但子进程退出码为 0；退出码 0 不代表业务成功。",
+      "任务被标记失败的直接原因是 Airflow 保存 XCom 时连不上 MySQL（OperationalError 2003）。",
+      "这是两个需要分别处理的问题。"
+    ],
+    "forbidden_claims": [
+      "唯一根因是业务 KeyError",
+      "MySQL 错误只是可以忽略的次生错误",
+      "业务脚本执行成功"
+    ]
+  }
+}

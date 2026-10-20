@@ -6,7 +6,9 @@ import unittest
 from unittest.mock import patch
 
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain.agents.middleware.types import ModelRequest, ModelResponse
+from agent_backend.middleware import GatewayRuntimeMiddleware
 from langchain_core.tools import tool
 from pydantic import SecretStr
 from agent_backend import runtime, tools
@@ -55,6 +57,39 @@ class FrameworkTests(unittest.TestCase):
             self.assertEqual(catalog()[0]["risk"], "execute")
             messages = asyncio.run(runtime.run(request, model=model, send=send, recv=receive))
         return calls, events, messages
+
+    def test_quota_notice_hides_queries_then_reserves_final_answer(self):
+        @tool
+        def query_fixture() -> str:
+            """读取测试数据。"""
+            return "ok"
+        @tool
+        def record_fixture() -> str:
+            """保存测试记录。"""
+            return "ok"
+        record_fixture.metadata = {"budget_group": "record"}
+        start = runtime.StartRequest(type="start", messages=[], toolDefinitions=[
+            {"function": {"name": tool.name}} for tool in [query_fixture, record_fixture]])
+        captured = []
+        async def receive():
+            return {"type": "model_allowed"}
+        async def handler(request):
+            captured.append(request)
+            return ModelResponse(result=[AIMessage(content="已完成", response_metadata={"finish_reason": "stop"})])
+        with patch.object(tools, "TOOLS", [query_fixture, record_fixture]):
+            middleware = GatewayRuntimeMiddleware(start, responses=True, system="policy", send=lambda *_a, **_kw: None, recv=receive)
+            request = ModelRequest(model=ToolModel(responses=[]), messages=[], tools=[query_fixture, record_fixture], system_message=SystemMessage(content="policy"))
+            middleware.calls["query"] = 14
+            asyncio.run(middleware.awrap_model_call(request, handler))
+            self.assertIn("14/16", captured[-1].system_message.text)
+            self.assertIn("请收尾", captured[-1].system_message.text)
+            middleware.calls["query"] = 16
+            asyncio.run(middleware.awrap_model_call(request, handler))
+            self.assertEqual([tool.name for tool in captured[-1].tools], ["record_fixture"])
+            middleware.model_calls = middleware.max_model_calls - 1
+            asyncio.run(middleware.awrap_model_call(request, handler))
+            self.assertEqual(captured[-1].tools, [])
+            self.assertIn("最后一轮", captured[-1].system_message.text)
 
     def test_custom_tool_registered_and_executed_by_toolnode(self):
         calls, events, messages = self.run_tool(True)

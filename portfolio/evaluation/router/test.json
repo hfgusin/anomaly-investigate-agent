@@ -1,0 +1,162 @@
+[
+ {
+  "text": "今天早上 automation 上有没有失败的任务？",
+  "route": "daily-check"
+ },
+ {
+  "text": "帮我扫一下 10-10 到 10-14 我名下 DAG 的失败",
+  "route": "daily-check"
+ },
+ {
+  "text": "dday_get_current_budget 昨天挂了，查下原因",
+  "route": "daily-check"
+ },
+ {
+  "text": "昨晚 report_operation_log 报 KeyError 了，帮忙定位一下",
+  "route": "daily-check"
+ },
+ {
+  "text": "跑一下每日失败排查",
+  "route": "daily-check"
+ },
+ {
+  "text": "这周 yara 的 airflow 任务有红的吗",
+  "route": "daily-check"
+ },
+ {
+  "text": "sync_campaign_status 失败了但日志里 exit code 0，怎么回事",
+  "route": "daily-check"
+ },
+ {
+  "text": "看看昨天哪些 DAG 失败了，挑一个查根因",
+  "route": "daily-check"
+ },
+ {
+  "text": "我的定时任务今天又报错了，帮我查查是数据问题还是代码问题",
+  "route": "daily-check"
+ },
+ {
+  "text": "10月13号失败的那个 task 帮我留个底",
+  "route": "daily-check"
+ },
+ {
+  "text": "scs_take_rate_ads 今天跑得怎么样？",
+  "route": "ads-check"
+ },
+ {
+  "text": "广告自动化昨天有没有调价失败的商品",
+  "route": "ads-check"
+ },
+ {
+  "text": "帮我出一份 10-12 广告自动化的排查报告",
+  "route": "ads-check"
+ },
+ {
+  "text": "take rate 广告脚本 15 点那次运行成功了吗",
+  "route": "ads-check"
+ },
+ {
+  "text": "昨天自动加投减投的执行结果怎么样，有多少条失败",
+  "route": "ads-check"
+ },
+ {
+  "text": "看下广告自动化 10 月 8 号的业务日志里有什么报错",
+  "route": "ads-check"
+ },
+ {
+  "text": "scs_take_rate_ads 最近三天哪天出了问题",
+  "route": "ads-check"
+ },
+ {
+  "text": "今天广告自动化调整了多少个 campaign",
+  "route": "ads-check"
+ },
+ {
+  "text": "ads 自动化今天被跳过的商品为什么被跳过",
+  "route": "ads-check"
+ },
+ {
+  "text": "广告自动出价那个任务今天正常吗",
+  "route": "ads-check"
+ },
+ {
+  "text": "Airflow 里 retries 和 retry_delay 是什么意思？",
+  "route": "general"
+ },
+ {
+  "text": "帮我写一个 Python 函数，把列表按某个字段分组",
+  "route": "general"
+ },
+ {
+  "text": "LangChain 的 middleware 是做什么的",
+  "route": "general"
+ },
+ {
+  "text": "你好，今天天气怎么样",
+  "route": "general"
+ },
+ {
+  "text": "pandas 的 KeyError 一般是什么原因",
+  "route": "general"
+ },
+ {
+  "text": "解释一下什么是 take rate",
+  "route": "general"
+ },
+ {
+  "text": "怎么在 Airflow 里配置任务失败邮件告警？",
+  "route": "general"
+ },
+ {
+  "text": "帮我把这段话翻译成英文：任务已完成",
+  "route": "general"
+ },
+ {
+  "text": "RAG 和微调有什么区别",
+  "route": "general"
+ },
+ {
+  "text": "推荐几本讲数据仓库的书",
+  "route": "general"
+ },
+ {
+  "text": "帮我看看任务",
+  "route": "clarify"
+ },
+ {
+  "text": "昨天那个跑得怎么样",
+  "route": "clarify"
+ },
+ {
+  "text": "有东西挂了，查一下",
+  "route": "clarify"
+ },
+ {
+  "text": "查下今天的自动化",
+  "route": "clarify"
+ },
+ {
+  "text": "帮我排查一下报错",
+  "route": "clarify"
+ },
+ {
+  "text": "它又失败了",
+  "route": "clarify"
+ },
+ {
+  "text": "看看昨天的运行情况",
+  "route": "clarify"
+ },
+ {
+  "text": "出份报告给我",
+  "route": "clarify"
+ },
+ {
+  "text": "那个脚本是不是又有问题了",
+  "route": "clarify"
+ },
+ {
+  "text": "检查一下今天的情况",
+  "route": "clarify"
+ }
+]

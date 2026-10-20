@@ -15,6 +15,14 @@ test('failed SQL call retains arguments, timeout cause and ordered events in a p
     store.requestTool(run.id, 'sql-1', 'di_query_sql', JSON.stringify({ sql: 'select 1', action: 'sql' }));
     store.decideTool(run.id, 'sql-1', 'approved');
     store.startTool(run.id, 'sql-1');
+    const livePath = join(dir, 'run-traces', `${run.id}.jsonl`);
+    const live = readFileSync(livePath, 'utf8').trim().split('\n').map(JSON.parse);
+    assert.equal(store.getRun(run.id).status, 'running');
+    assert.equal(live.at(-1).type, 'tool.started');
+    assert.equal(JSON.parse(live.find(e => e.type === 'tool.requested').tool.arguments).sql, 'select 1');
+    assert.equal(statSync(livePath).mode & 0o777, 0o600);
+    store.recordProviderEvent(run.id, 'agent.action', { text: '尚未收到查询结果。', tool_call_ids: ['sql-1'] });
+    assert.match(readFileSync(livePath, 'utf8'), /尚未收到查询结果/);
     store.finish(run.id, 'failed', '执行超时', 'TIMEOUT');
     const path = join(dir, 'run-traces', `${run.id}.json`);
     const trace = JSON.parse(readFileSync(path, 'utf8'));
@@ -24,6 +32,10 @@ test('failed SQL call retains arguments, timeout cause and ordered events in a p
     assert.equal(trace.events.at(-1).payload.errorCode, 'TIMEOUT');
     assert.ok(trace.tools[0].endedAt);
     assert.equal(statSync(path).mode & 0o777, 0o600);
+    const finalLines = readFileSync(livePath, 'utf8').trim().split('\n').map(JSON.parse);
+    assert.equal(finalLines.at(-1).type, 'run.failed');
+    assert.equal(finalLines.at(-1).error, '执行超时');
+    assert.equal(new Set(finalLines.map(e => e.seq)).size, finalLines.length);
   } finally { store.close(); rmSync(dir, { recursive: true, force: true }); }
 });
 

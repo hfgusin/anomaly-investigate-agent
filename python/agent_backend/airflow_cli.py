@@ -4,11 +4,13 @@
 
 成功时 stdout 打印 JSON；失败时错误写到 stderr，退出码非零。TS 自动化看板通过它调用。
 """
+from contextlib import nullcontext
 import json
 import os
 import sys
 from langchain_core.tools import ToolException
 
+from . import demo_world
 from .paths import ROOT
 from .tools.airflow import AIRFLOW_TOOLS
 from .tools.airflow_scan import airflow_scan_failures
@@ -31,9 +33,11 @@ def main(argv: list[str]) -> int:
         print(f"用法：python -m agent_backend.airflow_cli <{'|'.join(tools)}> ['<JSON 参数>']", file=sys.stderr)
         return 2
     load_dotenv()
+    world = os.environ.get("MIRROR_DEMO_WORLD")
     try:
         # .func skips handle_tool_error so failures surface as a non-zero exit.
-        result = tools[argv[1]].func(**json.loads(argv[2] if len(argv) > 2 else "{}"))
+        with demo_world.installed(demo_world.load(world)) if world else nullcontext():
+            result = tools[argv[1]].func(**json.loads(argv[2] if len(argv) > 2 else "{}"))
     except ToolException as error:
         print(error, file=sys.stderr)
         return 1

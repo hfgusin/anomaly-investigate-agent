@@ -89,3 +89,11 @@ uv pip install --python .venv-di/bin/python -r python/requirements.lock.txt
 网页仍需用户按上表验收。此阶段没有重跑全量 HotpotQA 正确率或真实 DI/Airflow 查询；并未证明所有供应商的非标准 Chat Completions 响应都与旧手写解析器兼容。Python 进程等待审批时继续存活；跨重启恢复仍使用现有 SQLite 检查点和已保存工具证据，而非保存 Python 内存。
 
 后续 Python 迁移顺序：工具注册与执行接口 → 持久化 store/运行协调器 → Gateway 与 HTTP/WS → RAG 与自动化独立入口。每阶段用现有接口行为对照，避免一次切换后丢失审批或恢复能力。
+
+## 用户指定的输出格式
+
+Python runtime 的 build_messages 要求优先遵守用户指定格式，不自行改表格、合并重复字段或省略记录。用户主动要求筛选或汇总时仍按其要求处理。它是模型指令，不是结构化校验器，不能保证每次都遵守。2026-10-14 用当前模型对 12 条完全虚构任务做前后对照：两次都保留 12 条记录与全部字段；旧提示使用 YAML 列表，新提示改为逐条字段行，更接近用户样例。原 71 条内部数据未重新发送，尚未验证长列表效果。
+
+## RAG 意图路由
+
+自然语言选择 Skill 已增加 Python 本地 MiniLM 样例检索、SQLite 向量缓存、近期对话输入及 OOS/澄清工具关闭路径。实现、启动及开发集验证边界见 [意图路由](intent-routing.md)。

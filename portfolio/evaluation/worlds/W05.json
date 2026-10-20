@@ -1,0 +1,78 @@
+{
+  "id": "W05",
+  "family": "empty_scope",
+  "question": "检查 yara 在 automation 服务器上 2026-10-10 到 2026-10-15 的失败任务，挑一个排查原因并给出报告。",
+  "airflow": {
+    "dags": [
+      {
+        "dag_id": "dday_get_current_budget",
+        "owners": [
+          "yara"
+        ],
+        "is_paused": false
+      },
+      {
+        "dag_id": "report_operation_log",
+        "owners": [
+          "yara"
+        ],
+        "is_paused": false
+      },
+      {
+        "dag_id": "finance_daily_export",
+        "owners": [
+          "finance.bot"
+        ],
+        "is_paused": false
+      }
+    ],
+    "task_instances": [
+      {
+        "dag_id": "dday_get_current_budget",
+        "dag_run_id": "scheduled__2026-10-13T01:00:00+00:00",
+        "task_id": "dday_get_current_budget",
+        "state": "success",
+        "try_number": 2,
+        "map_index": -1,
+        "start_date": "2026-10-14T01:00:04+00:00",
+        "end_date": "2026-10-14T01:00:04+00:00",
+        "execution_date": "2026-10-14T01:00:04+00:00",
+        "duration": 4.1
+      },
+      {
+        "dag_id": "report_operation_log",
+        "dag_run_id": "scheduled__2026-10-13T06:00:00+00:00",
+        "task_id": "report_operation_log",
+        "state": "success",
+        "try_number": 1,
+        "map_index": -1,
+        "start_date": "2026-10-14T06:00:05+00:00",
+        "end_date": "2026-10-14T06:00:05+00:00",
+        "execution_date": "2026-10-14T06:00:05+00:00",
+        "duration": 4.1
+      },
+      {
+        "dag_id": "finance_daily_export",
+        "dag_run_id": "scheduled__2026-10-13T03:00:00+00:00",
+        "task_id": "export",
+        "state": "failed",
+        "try_number": 1,
+        "map_index": -1,
+        "start_date": "2026-10-14T03:00:02+00:00",
+        "end_date": "2026-10-14T03:00:02+00:00",
+        "execution_date": "2026-10-14T03:00:02+00:00",
+        "duration": 4.1
+      }
+    ]
+  },
+  "gold": {
+    "expected_outcome": "answered",
+    "required_facts": [
+      "2026-10-10 至 2026-10-15 期间，yara 名下的 DAG 没有当前失败的任务实例。"
+    ],
+    "forbidden_claims": [
+      "finance_daily_export 是 yara 名下的失败任务",
+      "dday_get_current_budget 当前处于失败状态"
+    ]
+  }
+}

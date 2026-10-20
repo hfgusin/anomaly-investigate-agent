@@ -67,6 +67,13 @@ async def response_events(response):
         raise BackendError("PROVIDER_DISCONNECTED", "Responses 流在完整事件之前断开。")
 
 
+def _usage(usage):
+    if not usage:
+        return None
+    return {"input_tokens": usage.get("input_tokens", 0), "output_tokens": usage.get("output_tokens", 0),
+            "total_tokens": usage.get("total_tokens", 0)}
+
+
 class ArkResponsesChatModel(BaseChatModel):
     base_url: str
     model: str
@@ -161,10 +168,10 @@ class ArkResponsesChatModel(BaseChatModel):
                 raise BackendError("PROVIDER_INCOMPLETE", "Responses 未成功完成；已保留部分输出。")
         if not completed or completed.get("status") != "completed" or not isinstance(completed.get("output"), list):
             raise BackendError("PROVIDER_DISCONNECTED", "未收到成功的 Responses 完成事件。")
-        for chunk in self._final_chunks(completed["output"], text, searches):
+        for chunk in self._final_chunks(completed["output"], text, searches, completed.get("usage")):
             yield chunk
 
-    def _final_chunks(self, output, streamed_text, searches):
+    def _final_chunks(self, output, streamed_text, searches, usage=None):
         """完成事件里的 output 才是权威结果：补发未流出的正文、引用来源，最后一块带 tool_calls。"""
         final_text = ""
         sources = {}
@@ -201,7 +208,7 @@ class ArkResponsesChatModel(BaseChatModel):
         if not calls and not final_text.strip():
             raise BackendError("PROVIDER_EMPTY_RESPONSE", "Responses 完成事件中没有回答正文。")
         yield ChatGenerationChunk(message=AIMessageChunk(content="", tool_calls=calls,
-            additional_kwargs={"ark_output": output},
+            additional_kwargs={"ark_output": output}, usage_metadata=_usage(usage),
             response_metadata={"finish_reason": "tool_calls" if calls else "stop"}))
 
     @staticmethod
